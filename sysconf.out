@@ -1,0 +1,12 @@
+USER           = naoki
+WORKING_DIR    = /home/naoki/Lab/PLUTO
+SYSTEM_NAME    = Linux
+NODE_NAME      = Ubuntu-laptop
+RELEASE        = 6.8.0-101-generic
+ARCH           = x86_64
+BYTE_ORDER     = little
+VERSION        = #101-Ubuntu SMP PREEMPT_DYNAMIC Mon Feb  9 10:15:05 UTC 2026
+PLUTO_DIR      = /home/naoki/PLUTO
+PLUTO_VERSION  = 2024)"
+C_COMPILER     = gcc
+MPI_C_COMPILER = mpicc

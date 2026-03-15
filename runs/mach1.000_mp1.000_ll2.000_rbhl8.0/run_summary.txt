@@ -1,0 +1,17 @@
+case_name = mach1.000_mp1.000_ll2.000_rbhl8.0
+rbhl = 0.5
+tmax = 3.6945280494653252
+vinf = 1
+rsoft = 0.125
+dx_target = 0.0625
+dx_actual = 0.062417833028247202
+dy_actual = 0.062375148887076917
+nx = 234
+ny = 154
+ncell = 36036
+xmin = -5
+xmax = 9.605772928609845
+ymin = -4.8028864643049225
+ymax = 4.8028864643049225
+log_lambda_max = 2.0
+cells_per_rbhl_target = 8.0
