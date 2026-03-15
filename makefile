@@ -7,7 +7,8 @@
 pluto:                              # Default target
 
 ARCH         = Linux.gcc.defs
-PLUTO_DIR    = /home/naoki/PLUTO
+# Use the shell environment's PLUTO_DIR when available.
+PLUTO_DIR   ?= $(HOME)/PLUTO
 SRC          = $(PLUTO_DIR)/Src
 INCLUDE_DIRS = -I. -I$(SRC)
 VPATH        = ./:$(SRC)/New:$(SRC):$(SRC)/Time_Stepping:$(SRC)/States
@@ -104,4 +105,3 @@ clean:
 # ---------------------------------------------------------
 
 $(OBJ):  $(HEADERS)
-

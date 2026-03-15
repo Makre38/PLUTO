@@ -180,6 +180,7 @@ ymin = ${ymin}
 ymax = ${ymax}
 log_lambda_max = ${log_lambda_max}
 cells_per_rbhl_target = ${cells_per_rbhl}
+build_note = make uses PLUTO_DIR from the shell environment when set
 EOF
 
 echo "Prepared ${run_dir}"
