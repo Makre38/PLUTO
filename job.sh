@@ -11,9 +11,14 @@
 
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+RUN_DIR="$SCRIPT_DIR"
+if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -f "${SLURM_SUBMIT_DIR}/makefile" ] && [ -f "${SLURM_SUBMIT_DIR}/pluto.ini" ]; then
+  RUN_DIR="$SLURM_SUBMIT_DIR"
+fi
+cd "$RUN_DIR"
 TIME=`date`
 echo "start: ${TIME}"
+echo "run dir: ${RUN_DIR}"
 
 make clean
 make
