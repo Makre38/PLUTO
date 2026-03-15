@@ -10,7 +10,8 @@
 
 
 
-cd $SLURM_SUBMIT_DIR
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 TIME=`date`
 echo "start: ${TIME}"
 
