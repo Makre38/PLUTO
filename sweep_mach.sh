@@ -71,24 +71,49 @@ done < <(
 )
 
 submit_script="${runs_dir}/submit_all.sh"
+batch_size=5
+script_index=1
+run_all_script="run_all.sh"
+
+rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}"
+
 {
   echo "#!/usr/bin/env bash"
   echo
   echo "set -euo pipefail"
   echo
-  echo "batch_size=5"
-  echo "count=0"
+  echo 'prev_jobid=""'
   echo
-  for case_dir in "${generated_cases[@]}"; do
-    echo "sbatch ${case_dir}/job.sh"
-    echo "count=\$((count + 1))"
-    echo "if (( count % batch_size == 0 )); then"
-    echo "  echo \"Submitted \$count jobs; press Enter to continue with the next batch...\""
-    echo "  read -r _"
-    echo "fi"
-    echo
-  done
-} > "${submit_script}"
-chmod +x "${submit_script}"
+} > "${run_all_script}"
 
-echo "Wrote ${submit_script}"
+for ((i = 0; i < ${#generated_cases[@]}; i += batch_size)); do
+  submit_runs_script="${runs_dir}/submit_runs_${script_index}.sh"
+  {
+    echo "#!/usr/bin/env bash"
+    echo
+    echo "set -euo pipefail"
+    echo
+    for ((j = i; j < i + batch_size && j < ${#generated_cases[@]}; ++j)); do
+      case_dir="${generated_cases[j]}"
+      echo "( cd ${case_dir} && sbatch job.sh )"
+    done
+  } > "${submit_runs_script}"
+  chmod +x "${submit_runs_script}"
+  {
+    echo "if [[ -z \"\$prev_jobid\" ]]; then"
+    echo "  submit_out=\$(sbatch --wrap=\"bash ${submit_runs_script}\")"
+    echo "else"
+    echo "  submit_out=\$(sbatch --dependency=afterany:\${prev_jobid} --wrap=\"bash ${submit_runs_script}\")"
+    echo "fi"
+    echo 'prev_jobid=$(printf "%s\n" "$submit_out" | awk "{print \$4}")'
+    echo 'echo "$submit_out"'
+    echo
+  } >> "${run_all_script}"
+  script_index=$((script_index + 1))
+done
+
+chmod +x "${run_all_script}"
+cp "${runs_dir}/submit_runs_1.sh" "${submit_script}"
+
+echo "Wrote ${run_all_script}"
+echo "Wrote ${runs_dir}/submit_runs_*.sh"

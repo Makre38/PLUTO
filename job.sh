@@ -10,10 +10,10 @@
 
 
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$SLURM_SUBMIT_DIR"
 TIME=`date`
 echo "start: ${TIME}"
+echo "run dir: ${SLURM_SUBMIT_DIR}"
 
 make clean
 make
