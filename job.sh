@@ -14,6 +14,8 @@ cd $SLURM_SUBMIT_DIR
 TIME=`date`
 echo "start: ${TIME}"
 
+make clean
+make
 ./pluto
 
 
