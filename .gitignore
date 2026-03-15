@@ -4,3 +4,5 @@ pluto
 runs/
 
 output/
+
+./job.sh
