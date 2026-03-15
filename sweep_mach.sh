@@ -77,7 +77,7 @@ submit_script="${runs_dir}/submit_all.sh"
   echo "set -euo pipefail"
   echo
   for case_dir in "${generated_cases[@]}"; do
-    echo "sbatch --chdir=${case_dir} ${case_dir}/job.sh"
+    echo "( cd ${case_dir} && sbatch job.sh )"
   done
 } > "${submit_script}"
 chmod +x "${submit_script}"
