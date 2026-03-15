@@ -82,6 +82,8 @@ rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}"
   echo
   echo "set -euo pipefail"
   echo
+  echo 'prev_jobid=""'
+  echo
 } > "${run_all_script}"
 
 for ((i = 0; i < ${#generated_cases[@]}; i += batch_size)); do
@@ -97,7 +99,16 @@ for ((i = 0; i < ${#generated_cases[@]}; i += batch_size)); do
     done
   } > "${submit_runs_script}"
   chmod +x "${submit_runs_script}"
-  echo "bash ${submit_runs_script}" >> "${run_all_script}"
+  {
+    echo "if [[ -z \"\$prev_jobid\" ]]; then"
+    echo "  submit_out=\$(sbatch --wrap=\"bash ${submit_runs_script}\")"
+    echo "else"
+    echo "  submit_out=\$(sbatch --dependency=afterany:\${prev_jobid} --wrap=\"bash ${submit_runs_script}\")"
+    echo "fi"
+    echo 'prev_jobid=$(printf "%s\n" "$submit_out" | awk "{print \$4}")'
+    echo 'echo "$submit_out"'
+    echo
+  } >> "${run_all_script}"
   script_index=$((script_index + 1))
 done
 
