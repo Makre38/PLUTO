@@ -1,3 +1,0 @@
-CFLAGS := $(filter-out -DUSE_HDF5,$(CFLAGS))
-OBJ := $(filter-out hdf5_io.o,$(OBJ))
-LDFLAGS := $(filter-out -L/opt/hdf5/gcc/lib -lhdf5 -lz,$(LDFLAGS))

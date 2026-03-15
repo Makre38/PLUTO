@@ -164,10 +164,12 @@ EOF
 
 cat > "${run_dir}/run_summary.txt" <<EOF
 case_name = ${case_name}
+mp = ${mp}
 rbhl = ${rbhl}
 tmax = ${tmax}
 vinf = ${vinf}
 rsoft = ${rsoft}
+cs0 = ${cs0}
 dx_target = ${dx_target}
 dx_actual = ${dx_actual}
 dy_actual = ${dy_actual}
@@ -180,6 +182,8 @@ ymin = ${ymin}
 ymax = ${ymax}
 log_lambda_max = ${log_lambda_max}
 cells_per_rbhl_target = ${cells_per_rbhl}
+x1p = 0.0
+x2p = 0.0
 build_note = make uses PLUTO_DIR from the shell environment when set
 EOF
 
