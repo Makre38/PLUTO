@@ -11,6 +11,18 @@ struct SnapshotMeta
     vars::Vector{String}
 end
 
+function resolve_output_dir(run_dir::AbstractString, summary::Dict{String, String})
+    if haskey(summary, "output_subdir")
+        candidate = joinpath(run_dir, summary["output_subdir"])
+        isdir(candidate) && return candidate
+    end
+    for name in ("export", "output")
+        candidate = joinpath(run_dir, name)
+        isdir(candidate) && return candidate
+    end
+    error("Missing export/output directory under $(run_dir)")
+end
+
 function parse_grid(grid_path::AbstractString)
     raw_lines = readlines(grid_path)
     lines = filter(line -> !isempty(strip(line)) && !startswith(strip(line), "#"), raw_lines)
@@ -168,13 +180,14 @@ function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float6
 end
 
 function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
-    output_dir = joinpath(run_dir, "output")
+    params = get_run_params(run_dir)
+    summary_path = joinpath(run_dir, "run_summary.txt")
+    summary = isfile(summary_path) ? parse_key_value_file(summary_path) : Dict{String, String}()
+    output_dir = resolve_output_dir(run_dir, summary)
     grid_path = joinpath(output_dir, "grid.out")
     dbl_out_path = joinpath(output_dir, "dbl.out")
     isfile(grid_path) || error("Missing $(grid_path)")
     isfile(dbl_out_path) || error("Missing $(dbl_out_path)")
-
-    params = get_run_params(run_dir)
     x, y, z, dx, dy, dz = parse_grid(grid_path)
     metas = parse_dbl_out(dbl_out_path)
     meta = nearest_snapshot(metas, target_log_lambda, params.rbhl, params.cs0)

@@ -12,6 +12,34 @@ struct SnapshotMeta
     vars::Vector{String}
 end
 
+function parse_run_summary(summary_path::AbstractString)
+    summary = Dict{String, String}()
+    for line in eachline(summary_path)
+        s = strip(line)
+        isempty(s) && continue
+        occursin("=", s) || continue
+        key, value = split(s, "=", limit = 2)
+        summary[strip(key)] = strip(value)
+    end
+    return summary
+end
+
+function resolve_output_dir(run_dir::AbstractString)
+    summary_path = joinpath(run_dir, "run_summary.txt")
+    if isfile(summary_path)
+        summary = parse_run_summary(summary_path)
+        if haskey(summary, "output_subdir")
+            candidate = joinpath(run_dir, summary["output_subdir"])
+            isdir(candidate) && return candidate
+        end
+    end
+    for name in ("export", "output")
+        candidate = joinpath(run_dir, name)
+        isdir(candidate) && return candidate
+    end
+    error("Missing export/output directory under $(run_dir)")
+end
+
 function parse_grid(grid_path::AbstractString)
     raw_lines = readlines(grid_path)
     lines = filter(line -> !isempty(strip(line)) && !startswith(strip(line), "#"), raw_lines)
@@ -83,7 +111,7 @@ function main()
 
     run_dir = abspath(ARGS[1])
     output_gif = length(ARGS) >= 2 ? abspath(ARGS[2]) : joinpath(run_dir, "density.gif")
-    output_dir = joinpath(run_dir, "output")
+    output_dir = resolve_output_dir(run_dir)
 
     grid_path = joinpath(output_dir, "grid.out")
     dbl_out_path = joinpath(output_dir, "dbl.out")

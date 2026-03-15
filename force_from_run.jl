@@ -10,6 +10,18 @@ struct SnapshotMeta
     vars::Vector{String}
 end
 
+function resolve_output_dir(run_dir::AbstractString, summary::Dict{String, String})
+    if haskey(summary, "output_subdir")
+        candidate = joinpath(run_dir, summary["output_subdir"])
+        isdir(candidate) && return candidate
+    end
+    for name in ("export", "output")
+        candidate = joinpath(run_dir, name)
+        isdir(candidate) && return candidate
+    end
+    error("Missing export/output directory under $(run_dir)")
+end
+
 function parse_grid(grid_path::AbstractString)
     raw_lines = readlines(grid_path)
     lines = filter(line -> !isempty(strip(line)) && !startswith(strip(line), "#"), raw_lines)
@@ -127,19 +139,18 @@ function main()
     end
 
     run_dir = abspath(ARGS[1])
-    output_dir = joinpath(run_dir, "output")
+    summary_path = joinpath(run_dir, "run_summary.txt")
+    isfile(summary_path) || error("Missing $(summary_path)")
+    summary = parse_run_summary(summary_path)
+    output_dir = resolve_output_dir(run_dir, summary)
 
     grid_path = joinpath(output_dir, "grid.out")
     dbl_out_path = joinpath(output_dir, "dbl.out")
-    summary_path = joinpath(run_dir, "run_summary.txt")
-
     isfile(grid_path) || error("Missing $(grid_path)")
     isfile(dbl_out_path) || error("Missing $(dbl_out_path)")
-    isfile(summary_path) || error("Missing $(summary_path)")
 
     x, y, z, dx, dy, dz = parse_grid(grid_path)
     metas = parse_dbl_out(dbl_out_path)
-    summary = parse_run_summary(summary_path)
 
     nx, ny, nz = length(x), length(y), length(z)
     mp = parse(Float64, summary["mp"])
