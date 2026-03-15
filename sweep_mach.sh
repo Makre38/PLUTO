@@ -74,8 +74,9 @@ submit_script="${runs_dir}/submit_all.sh"
 batch_size=5
 script_index=1
 run_all_script="run_all.sh"
+serial_script="${runs_dir}/run_serial.sh"
 
-rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}"
+rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}" "${serial_script}"
 
 {
   echo "#!/usr/bin/env bash"
@@ -85,6 +86,20 @@ rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}"
   echo 'prev_jobid=""'
   echo
 } > "${run_all_script}"
+
+{
+  echo "#!/usr/bin/env bash"
+  echo
+  echo "set -euo pipefail"
+  echo
+  for case_dir in "${generated_cases[@]}"; do
+    echo "echo \"Running ${case_dir}\""
+    echo "( cd ${case_dir} && make clean && make && ./pluto )"
+    echo
+  done
+} > "${serial_script}"
+
+chmod +x "${serial_script}"
 
 for ((i = 0; i < ${#generated_cases[@]}; i += batch_size)); do
   submit_runs_script="${runs_dir}/submit_runs_${script_index}.sh"
@@ -117,3 +132,4 @@ cp "${runs_dir}/submit_runs_1.sh" "${submit_script}"
 
 echo "Wrote ${run_all_script}"
 echo "Wrote ${runs_dir}/submit_runs_*.sh"
+echo "Wrote ${serial_script}"
