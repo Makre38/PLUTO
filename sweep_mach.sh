@@ -76,8 +76,17 @@ submit_script="${runs_dir}/submit_all.sh"
   echo
   echo "set -euo pipefail"
   echo
+  echo "batch_size=5"
+  echo "count=0"
+  echo
   for case_dir in "${generated_cases[@]}"; do
     echo "sbatch ${case_dir}/job.sh"
+    echo "count=\$((count + 1))"
+    echo "if (( count % batch_size == 0 )); then"
+    echo "  echo \"Submitted \$count jobs; press Enter to continue with the next batch...\""
+    echo "  read -r _"
+    echo "fi"
+    echo
   done
 } > "${submit_script}"
 chmod +x "${submit_script}"
