@@ -71,15 +71,38 @@ done < <(
 )
 
 submit_script="${runs_dir}/submit_all.sh"
+batch_size=5
+script_index=1
+run_all_script="run_all.sh"
+
+rm -f "${runs_dir}"/submit_runs_*.sh "${submit_script}" "${run_all_script}"
+
 {
   echo "#!/usr/bin/env bash"
   echo
   echo "set -euo pipefail"
   echo
-  for case_dir in "${generated_cases[@]}"; do
-    echo "( cd ${case_dir} && sbatch job.sh )"
-  done
-} > "${submit_script}"
-chmod +x "${submit_script}"
+} > "${run_all_script}"
 
-echo "Wrote ${submit_script}"
+for ((i = 0; i < ${#generated_cases[@]}; i += batch_size)); do
+  submit_runs_script="${runs_dir}/submit_runs_${script_index}.sh"
+  {
+    echo "#!/usr/bin/env bash"
+    echo
+    echo "set -euo pipefail"
+    echo
+    for ((j = i; j < i + batch_size && j < ${#generated_cases[@]}; ++j)); do
+      case_dir="${generated_cases[j]}"
+      echo "( cd ${case_dir} && sbatch job.sh )"
+    done
+  } > "${submit_runs_script}"
+  chmod +x "${submit_runs_script}"
+  echo "bash ${submit_runs_script}" >> "${run_all_script}"
+  script_index=$((script_index + 1))
+done
+
+chmod +x "${run_all_script}"
+cp "${runs_dir}/submit_runs_1.sh" "${submit_script}"
+
+echo "Wrote ${run_all_script}"
+echo "Wrote ${runs_dir}/submit_runs_*.sh"
