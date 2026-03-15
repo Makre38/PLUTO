@@ -22,6 +22,7 @@ warn_cells="${WARN_CELLS:-2000000}"
 hard_cells="${HARD_CELLS:-8000000}"
 
 runs_dir="${RUNS_DIR:-runs}"
+export_subdir="${EXPORT_SUBDIR:-export}"
 
 eval "$(awk -v mach="${mach}" \
               -v mp="${mp}" \
@@ -94,7 +95,7 @@ fi
 
 run_dir="${runs_dir}/${case_name}"
 mkdir -p "${run_dir}"
-mkdir -p "${run_dir}/output"
+mkdir -p "${run_dir}/${export_subdir}"
 
 cp definitions.h init.c makefile local_make job.sh "${run_dir}/"
 chmod +x "${run_dir}/job.sh"
@@ -102,7 +103,7 @@ chmod +x "${run_dir}/job.sh"
 cat > "${run_dir}/pluto.ini" <<EOF
 [Grid]
 
-output_dir           ./output
+output_dir           ./${export_subdir}
 
 X1-grid    1    ${xmin}    ${nx}    u    ${xmax}
 X2-grid    1    ${ymin}    ${ny}    u    ${ymax}
@@ -185,6 +186,7 @@ cells_per_rbhl_target = ${cells_per_rbhl}
 x1p = 0.0
 x2p = 0.0
 build_note = make uses PLUTO_DIR from the shell environment when set
+output_subdir = ${export_subdir}
 EOF
 
 echo "Prepared ${run_dir}"
