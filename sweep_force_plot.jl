@@ -146,6 +146,7 @@ function get_run_params(run_dir::AbstractString)
         mp = getf("mp", "MPERT"),
         rbhl = getf("rbhl", "RBHL"),
         cs0 = getf("cs0", "CS0"),
+        rho0 = getf("rho0", "RHO0"),
         x1p = haskey(summary, "x1p") ? parse(Float64, summary["x1p"]) : get(ini, "X1P", 0.0),
         x2p = haskey(summary, "x2p") ? parse(Float64, summary["x2p"]) : get(ini, "X2P", 0.0),
         log_lambda_max = getf("log_lambda_max", "LOG_LAMBDA_MAX"),
@@ -153,7 +154,7 @@ function get_run_params(run_dir::AbstractString)
 end
 
 function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                       mp::Float64, xp::Float64, yp::Float64, rcut::Float64)
+                       mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
     fx = 0.0
     fy = 0.0
     for j in eachindex(y), i in eachindex(x)
@@ -164,10 +165,10 @@ function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector
         if r < rcut || r == 0.0
             continue
         end
-        cell_mass = rho[i, j] * dx[i] * dy[j]
+        delta_mass = (rho[i, j] - rho0) * dx[i] * dy[j]
         inv_r3 = 1.0 / (r2 * r)
-        fx += mp * cell_mass * rx * inv_r3
-        fy += mp * cell_mass * ry * inv_r3
+        fx += mp * delta_mass * rx * inv_r3
+        fy += mp * delta_mass * ry * inv_r3
     end
     return fx, fy
 end
@@ -196,7 +197,7 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
     data_path = joinpath(output_dir, @sprintf("data.%04d.dbl", meta.index))
     isfile(data_path) || error("Missing $(data_path)")
     rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
-    fx, fy = compute_force(rho, x, y, dx, dy; mp = params.mp, xp = params.x1p, yp = params.x2p, rcut = params.rbhl)
+    fx, fy = compute_force(rho, x, y, dx, dy; mp = params.mp, rho0 = params.rho0, xp = params.x1p, yp = params.x2p, rcut = params.rbhl)
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
 
     return (

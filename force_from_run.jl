@@ -103,7 +103,7 @@ function parse_run_summary(summary_path::AbstractString)
 end
 
 function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                       mp::Float64, xp::Float64, yp::Float64, rcut::Float64)
+                       mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
     fx = 0.0
     fy = 0.0
 
@@ -116,10 +116,10 @@ function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector
             if r < rcut || r == 0.0
                 continue
             end
-            cell_mass = rho[i, j] * dx[i] * dy[j]
+            delta_mass = (rho[i, j] - rho0) * dx[i] * dy[j]
             inv_r3 = 1.0 / (r2 * r)
-            fx += mp * cell_mass * rx * inv_r3
-            fy += mp * cell_mass * ry * inv_r3
+            fx += mp * delta_mass * rx * inv_r3
+            fy += mp * delta_mass * ry * inv_r3
         end
     end
 
@@ -156,6 +156,7 @@ function main()
     mp = parse(Float64, summary["mp"])
     rbhl = parse(Float64, summary["rbhl"])
     cs0 = parse(Float64, summary["cs0"])
+    rho0 = parse(Float64, summary["rho0"])
     xp = parse(Float64, summary["x1p"])
     yp = parse(Float64, summary["x2p"])
     rcut = rbhl
@@ -167,7 +168,7 @@ function main()
     isfile(data_path) || error("Missing $(data_path)")
 
     rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
-    fx, fy = compute_force(rho, x, y, dx, dy; mp = mp, xp = xp, yp = yp, rcut = rcut)
+    fx, fy = compute_force(rho, x, y, dx, dy; mp = mp, rho0 = rho0, xp = xp, yp = yp, rcut = rcut)
     log_lambda = log(meta.time * cs0 / rbhl)
 
     println("# run_dir = $(run_dir)")

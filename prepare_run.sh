@@ -171,6 +171,7 @@ tmax = ${tmax}
 vinf = ${vinf}
 rsoft = ${rsoft}
 cs0 = ${cs0}
+rho0 = ${rho0}
 dx_target = ${dx_target}
 dx_actual = ${dx_actual}
 dy_actual = ${dy_actual}
