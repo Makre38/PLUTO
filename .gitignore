@@ -1,20 +1,6 @@
 *.o
 pluto
 
-runs/*/output/
-runs/*/*.dbl
-runs/*/*.flt
-runs/*/*.vtk
-runs/*/*.tab
-runs/*/*.ppm
-runs/*/*.png
-runs/*/*.log
-runs/*/dbl.out
-runs/*/flt.out
-runs/*/vtk.out
-runs/*/grid.out
-runs/*/restart.out
-runs/*/pluto.log
+runs/
 
 output/
-

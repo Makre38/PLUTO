@@ -14,7 +14,7 @@ cd $SLURM_SUBMIT_DIR
 TIME=`date`
 echo "start: ${TIME}"
 
-./pluto && mv ./data.0000.dbl.h5 0000.h5 && mv ./data.0000.dbl.xmf ./0000.xmf
+./pluto
 
 
 TIME=`date`

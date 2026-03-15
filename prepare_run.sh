@@ -6,7 +6,7 @@ mach="${MACH:-1.0}"
 mp="${MP:-1.0}"
 log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
 cells_per_rbhl="${CELLS_PER_RBHL:-8.0}"
-n_output="${N_OUTPUT:-20}"
+n_output="${N_OUTPUT:-200}"
 
 gamma="${GAMMA:-1.0001}"
 rho0="${RHO0:-1.0}"
@@ -96,7 +96,8 @@ run_dir="${runs_dir}/${case_name}"
 mkdir -p "${run_dir}"
 mkdir -p "${run_dir}/output"
 
-cp definitions.h init.c makefile local_make "${run_dir}/"
+cp definitions.h init.c makefile local_make job.sh "${run_dir}/"
+chmod +x "${run_dir}/job.sh"
 
 cat > "${run_dir}/pluto.ini" <<EOF
 [Grid]
