@@ -2,10 +2,13 @@
 
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_dir="$(cd "${script_dir}/.." && pwd)"
+
 mach="${MACH:-1.0}"
 mp="${MP:-1.0}"
 log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
-cells_per_rbhl="${CELLS_PER_RBHL:-8.0}"
+cells_per_rbhl="${CELLS_PER_RBHL:-2.0}"
 n_output="${N_OUTPUT:-200}"
 
 gamma="${GAMMA:-1.0001}"
@@ -21,7 +24,7 @@ upstream_min="${UPSTREAM_MIN:-5.0}"
 warn_cells="${WARN_CELLS:-2000000}"
 hard_cells="${HARD_CELLS:-8000000}"
 
-runs_dir="${RUNS_DIR:-runs}"
+runs_dir="${RUNS_DIR:-${repo_dir}/runs}"
 export_subdir="${EXPORT_SUBDIR:-export}"
 
 eval "$(awk -v mach="${mach}" \
@@ -85,7 +88,7 @@ BEGIN {
 }')"
 
 if [[ "${hard}" -eq 1 ]]; then
-  echo "Refusing to generate run: Ncell=${ncell} exceeds HARD_CELLS=${hard_cells}" >&2
+  echo "Refusing to generate case: Ncell=${ncell} exceeds HARD_CELLS=${hard_cells}" >&2
   exit 1
 fi
 
@@ -93,14 +96,14 @@ if [[ "${warn}" -eq 1 ]]; then
   echo "Warning: Ncell=${ncell} exceeds WARN_CELLS=${warn_cells}" >&2
 fi
 
-run_dir="${runs_dir}/${case_name}"
-mkdir -p "${run_dir}"
-mkdir -p "${run_dir}/${export_subdir}"
+mkdir -p "${runs_dir}"
+case_dir="${runs_dir}/${case_name}"
+mkdir -p "${case_dir}"
+mkdir -p "${case_dir}/${export_subdir}"
 
-cp definitions.h init.c makefile local_make job.sh "${run_dir}/"
-chmod +x "${run_dir}/job.sh"
+cp "${repo_dir}/definitions.h" "${repo_dir}/init.c" "${repo_dir}/makefile" "${repo_dir}/local_make" "${case_dir}/"
 
-cat > "${run_dir}/pluto.ini" <<EOF
+cat > "${case_dir}/pluto.ini" <<EOF
 [Grid]
 
 output_dir           ./${export_subdir}
@@ -163,7 +166,7 @@ X1P                         0.0
 X2P                         0.0
 EOF
 
-cat > "${run_dir}/run_summary.txt" <<EOF
+cat > "${case_dir}/run_summary.txt" <<EOF
 case_name = ${case_name}
 mp = ${mp}
 rbhl = ${rbhl}
@@ -190,4 +193,4 @@ build_note = make uses PLUTO_DIR from the shell environment when set
 output_subdir = ${export_subdir}
 EOF
 
-echo "Prepared ${run_dir}"
+echo "Prepared ${case_dir}"

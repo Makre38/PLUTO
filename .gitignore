@@ -1,8 +1,7 @@
 *.o
 pluto
+*.swp
 
 runs/
 
 output/
-
-./job.sh
