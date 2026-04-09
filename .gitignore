@@ -2,6 +2,6 @@
 pluto
 *.swp
 
-runs/
+runs*/
 
 output/
