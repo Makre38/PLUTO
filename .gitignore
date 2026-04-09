@@ -5,3 +5,6 @@ pluto
 runs*/
 
 output/
+
+
+./rsync_from_trinity.sh
