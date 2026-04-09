@@ -207,7 +207,7 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
         target_log_lambda = target_log_lambda,
         fx = fx,
         fy = fy,
-        fdf = -fx,
+        fdf = fx,
         actual_log_lambda = log_lambda,
         snapshot = meta.index,
         run_dir = run_dir,
