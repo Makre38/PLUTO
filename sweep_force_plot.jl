@@ -1,7 +1,12 @@
 using Printf
 using Plots
+using LaTeXStrings
 
-const DEFAULT_TARGET_LOG_LAMBDAS = [1.0, 1.5, 2.0]
+const DEFAULT_TARGET_LOG_LAMBDAS = [1.0, 1.5, 1.7, 1.9, 2.0]
+const PLOT_OSTRIKER_MODEL = true
+const OSTRIKER_LOG_LAMBDA = 2.0
+const OSTRIKER_MACH_RANGES = [(0.0, 0.8), (1.2, 3.0)]
+const OSTRIKER_SAMPLES_PER_RANGE = 100
 
 struct SnapshotMeta
     index::Int
@@ -182,6 +187,21 @@ function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float6
     return valid[argmin(deltas)]
 end
 
+function ostriker_normalization(rho0::Float64, mp::Float64, cs0::Float64)
+    return 4.0 * π * rho0 * mp^2 / cs0^2
+end
+
+function ostriker_drag_normalized(mach::Float64; log_lambda::Float64 = OSTRIKER_LOG_LAMBDA)
+    F_df::Float64 = 0
+    if mach < 1
+        F_df =( 0.5 * log( (1+mach) / (1-mach)) - mach )/mach^2
+    else
+        F_df =(0.5*log(1 - 1/mach^2) + log_lambda)/mach^2
+    end
+    #error("Fill in ostriker_drag_normalized(mach; log_lambda = ...) before enabling PLOT_OSTRIKER_MODEL")
+    return F_df
+end
+
 function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
     params = get_run_params(run_dir)
     summary_path = joinpath(run_dir, "run_summary.txt")
@@ -201,13 +221,17 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
     rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
     fx, fy = compute_force(rho, x, y, dx, dy; mp = params.mp, rho0 = params.rho0, xp = params.x1p, yp = params.x2p, rcut = params.rbhl)
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
+    fdf_raw = fx
+    norm_factor = ostriker_normalization(params.rho0, params.mp, params.cs0)
 
     return (
         mach = params.mach,
         target_log_lambda = target_log_lambda,
         fx = fx,
         fy = fy,
-        fdf = fx,
+        fdf_raw = fdf_raw,
+        fdf_norm = fdf_raw / norm_factor,
+        norm_factor = norm_factor,
         actual_log_lambda = log_lambda,
         snapshot = meta.index,
         run_dir = run_dir,
@@ -222,11 +246,28 @@ end
 
 function write_results_table(table_path::AbstractString, results)
     open(table_path, "w") do io
-        println(io, "# Mach target_log_lambda actual_log_lambda snapshot Fx Fy Fdf run_dir")
+        println(io, "# Mach target_log_lambda actual_log_lambda snapshot Fx Fy Fdf_raw Fdf_norm norm_factor run_dir")
         for r in results
-            @printf(io, "%.8f %.8f %.8f %d %.12e %.12e %.12e %s\n",
-                    r.mach, r.target_log_lambda, r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fdf, r.run_dir)
+            @printf(io, "%.8f %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %s\n",
+                    r.mach, r.target_log_lambda, r.actual_log_lambda, r.snapshot,
+                    r.fx, r.fy, r.fdf_raw, r.fdf_norm, r.norm_factor, r.run_dir)
         end
+    end
+end
+
+function plot_ostriker_model!(plt)
+    for (i, (mach_min, mach_max)) in enumerate(OSTRIKER_MACH_RANGES)
+        mach_values = collect(range(mach_min, mach_max; length = OSTRIKER_SAMPLES_PER_RANGE))
+        drag_values = [ostriker_drag_normalized(mach; log_lambda = OSTRIKER_LOG_LAMBDA) for mach in mach_values]
+        plot!(
+            plt,
+            mach_values,
+            drag_values,
+            color = :black,
+            linestyle = :solid,
+            linewidth = 2,
+            label = i == 1 ? latexstring(@sprintf("\\mathrm{Ostriker\\ (1999)},\\ \\log \\Lambda = %.1f", OSTRIKER_LOG_LAMBDA)) : "",
+        )
     end
 end
 
@@ -284,17 +325,24 @@ function main()
         println("Wrote $(table_path)")
     end
 
-    plt = plot(xlabel = "Mach", ylabel = "Fdf", title = "Fdf vs Mach")
+    plt = plot(
+        xlabel = "Mach",
+        ylabel = latexstring("F_{\\rm df}/\\left(4\\pi \\rho_0 (G M_p)^2 / c_s^2\\right)"),
+        title = "Fdf vs Mach",
+    )
     for target_log_lambda in target_log_lambdas
         per_target = sort([r for r in results if r.target_log_lambda == target_log_lambda], by = r -> r.mach)
         isempty(per_target) && continue
         plot!(
             plt,
             [r.mach for r in per_target],
-            [r.fdf for r in per_target],
+            [r.fdf_norm for r in per_target],
             marker = :circle,
-            label = @sprintf("log Lambda ~= %.3f", target_log_lambda),
+            label = latexstring(@sprintf("\\log \\Lambda \\approx %.3f", target_log_lambda)),
         )
+    end
+    if PLOT_OSTRIKER_MODEL
+        plot_ostriker_model!(plt)
     end
     png(plt, output_prefix * ".png")
 
