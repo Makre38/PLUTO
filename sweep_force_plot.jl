@@ -1,6 +1,8 @@
 using Printf
 using Plots
 
+const DEFAULT_TARGET_LOG_LAMBDAS = [1.0, 1.5, 2.0]
+
 struct SnapshotMeta
     index::Int
     time::Float64
@@ -202,60 +204,100 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
 
     return (
         mach = params.mach,
+        target_log_lambda = target_log_lambda,
         fx = fx,
         fy = fy,
         fdf = -fx,
-        log_lambda = log_lambda,
+        actual_log_lambda = log_lambda,
         snapshot = meta.index,
         run_dir = run_dir,
     )
 end
 
+function sanitize_log_lambda_label(value::Float64)
+    text = @sprintf("%.3f", value)
+    text = replace(text, "-" => "m")
+    return replace(text, "." => "p")
+end
+
+function write_results_table(table_path::AbstractString, results)
+    open(table_path, "w") do io
+        println(io, "# Mach target_log_lambda actual_log_lambda snapshot Fx Fy Fdf run_dir")
+        for r in results
+            @printf(io, "%.8f %.8f %.8f %d %.12e %.12e %.12e %s\n",
+                    r.mach, r.target_log_lambda, r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fdf, r.run_dir)
+        end
+    end
+end
+
+function parse_cli_targets_and_prefix(runs_dir::AbstractString, args::Vector{String})
+    target_log_lambdas = DEFAULT_TARGET_LOG_LAMBDAS
+    output_prefix = joinpath(runs_dir, "force_summary")
+
+    if length(args) >= 1
+        first_arg = args[1]
+        parsed_target = tryparse(Float64, first_arg)
+        if parsed_target === nothing
+            output_prefix = abspath(first_arg)
+        else
+            target_log_lambdas = [parsed_target]
+            if length(args) >= 2
+                output_prefix = abspath(args[2])
+            end
+        end
+    end
+
+    return target_log_lambdas, output_prefix
+end
+
 function main()
     if isempty(ARGS)
-        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA] [OUTPUT_PREFIX]")
+        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA|OUTPUT_PREFIX] [OUTPUT_PREFIX]")
     end
 
     runs_dir = abspath(ARGS[1])
-    target_log_lambda = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : 2.0
-    output_prefix = length(ARGS) >= 3 ? abspath(ARGS[3]) : joinpath(runs_dir, "force_summary")
+    target_log_lambdas, output_prefix = parse_cli_targets_and_prefix(runs_dir, ARGS[2:end])
 
     run_dirs = sort(filter(path -> isdir(path) && basename(path) != "output", readdir(runs_dir; join = true)))
     isempty(run_dirs) && error("No run directories found in $(runs_dir)")
 
     results = NamedTuple[]
-    for run_dir in run_dirs
-        try
-            push!(results, compute_run_force(run_dir, target_log_lambda))
-        catch err
-            @warn "Skipping run" run_dir err
+    for target_log_lambda in target_log_lambdas
+        for run_dir in run_dirs
+            try
+                push!(results, compute_run_force(run_dir, target_log_lambda))
+            catch err
+                @warn "Skipping run" run_dir target_log_lambda err
+            end
         end
     end
     isempty(results) && error("No usable runs found in $(runs_dir)")
 
-    results = sort(results, by = r -> r.mach)
+    sort!(results, by = r -> (r.target_log_lambda, r.mach))
 
-    table_path = output_prefix * ".dat"
-    open(table_path, "w") do io
-        println(io, "# Mach log_lambda snapshot Fx Fy Fdf run_dir")
-        for r in results
-            @printf(io, "%.8f %.8f %d %.12e %.12e %.12e %s\n",
-                    r.mach, r.log_lambda, r.snapshot, r.fx, r.fy, r.fdf, r.run_dir)
-        end
+    for target_log_lambda in target_log_lambdas
+        per_target = [r for r in results if r.target_log_lambda == target_log_lambda]
+        isempty(per_target) && continue
+        suffix = sanitize_log_lambda_label(target_log_lambda)
+        table_path = output_prefix * "_loglambda_" * suffix * ".dat"
+        write_results_table(table_path, per_target)
+        println("Wrote $(table_path)")
     end
 
-    plt = plot(
-        [r.mach for r in results],
-        [r.fdf for r in results],
-        marker = :circle,
-        xlabel = "Mach",
-        ylabel = "Fdf",
-        title = @sprintf("Fdf vs Mach at log Lambda ~= %.3f", target_log_lambda),
-        legend = false,
-    )
+    plt = plot(xlabel = "Mach", ylabel = "Fdf", title = "Fdf vs Mach")
+    for target_log_lambda in target_log_lambdas
+        per_target = sort([r for r in results if r.target_log_lambda == target_log_lambda], by = r -> r.mach)
+        isempty(per_target) && continue
+        plot!(
+            plt,
+            [r.mach for r in per_target],
+            [r.fdf for r in per_target],
+            marker = :circle,
+            label = @sprintf("log Lambda ~= %.3f", target_log_lambda),
+        )
+    end
     png(plt, output_prefix * ".png")
 
-    println("Wrote $(table_path)")
     println("Wrote $(output_prefix * ".png")")
 end
 
