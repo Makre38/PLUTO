@@ -78,3 +78,8 @@ Other changes:
 - One planned diagnostic is to change or compare the EOS setup.
 - This is meant as a physics and numerics check, not as part of the script-layout cleanup itself.
 - The purpose of the EOS comparison is to test whether the anomalous density structure is related to the present equation-of-state choice rather than only to boundaries, resolution, or other run settings.
+- Keep in mind that calling `animate_density.jl` from the Julia REPL may be useful later for repeated interactive use, but this is currently lower priority because runtime is expected to dominate over compilation cost.
+- Investigate whether small random perturbations can reduce realization-specific vortex-street imprint in high-Mach runs.
+- Compare deterministic runs and perturbed runs by ensemble-averaging drag and density structure.
+- Decide whether perturbations should be added only to the initial condition or continuously through the inflow boundary.
+- Measure sensitivity to perturbation amplitude and random seed.
