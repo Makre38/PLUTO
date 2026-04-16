@@ -1,5 +1,74 @@
 # Change Log
 
+## 2026-04-16
+
+### Topic
+
+Updates to `animate_density.jl` to overlay log-density contour lines on density snapshot plots.
+
+### Why this was done
+
+The density animation already showed the spatial structure of `log10 rho` as a heatmap, but it was harder to read subtle shape changes and wake geometry from color alone.
+
+Adding contour lines on top of the same `log10 rho` field makes the density structure easier to inspect frame by frame without changing the existing plotting workflow.
+
+### What was changed
+
+- `animate_density.jl` now computes a shared set of contour levels from the global minimum and maximum of `log10 rho` across all snapshots.
+- Each animation frame still draws the existing `log10 rho` heatmap, and now overlays contour lines of the same `log10 rho` field using `contour!`.
+- Contour drawing parameters were added near the top of the script so the overlay can be adjusted easily:
+  - whether contour drawing is enabled
+  - the number of contour levels
+  - contour color
+  - contour line width
+- The contour levels are kept fixed across the full animation so the visual meaning of each contour remains consistent from frame to frame.
+
+### Verification
+
+- The updated script was loaded in Julia with the final `main()` call suppressed, and the load completed successfully.
+- A manual user check also reported that the updated plotting behavior appears to work.
+
+## 2026-04-09
+
+### Topic
+
+Updates to `sweep_force_plot.jl` for multi-target force comparison and cleaner plotting output.
+
+### Why this was done
+
+The previous plotting script handled only one target `log Lambda` value at a time and wrote a single summary table and plot.
+
+This made it inconvenient to compare drag estimates across multiple `log Lambda` choices on one figure, and the plot labels were still fairly plain.
+
+There was also a need to prepare the plotting workflow for a provisional comparison against the Ostriker (1999) drag formula, while keeping in mind that the current simulation setup is still 2D.
+
+### What was changed
+
+- `sweep_force_plot.jl` now supports a default internal list of target `log Lambda` values, so multiple targets can be processed in one run.
+- The script still supports the previous single-target mode when a numeric `log Lambda` is given on the command line.
+- Output was changed to:
+  - one combined PNG with multiple `log Lambda` series overplotted
+  - one `.dat` file per target `log Lambda`
+- The drag sign convention in the plot output was adjusted so that the plotted drag appears as a positive quantity for the expected backward force.
+- Plot legends were updated to use `LaTeXStrings`, so `log Lambda` now appears in a cleaner mathematical style.
+- The plotted drag was normalized to the Ostriker-style quantity
+  - `F_df / (4 pi rho0 (G M_p)^2 / cs0^2)`
+- The output tables now store both:
+  - the raw drag value
+  - the normalized drag value
+  - the normalization factor used
+- A plotting hook for an Ostriker (1999) model curve was added, with internal options for:
+  - enabling or disabling the model overlay
+  - setting a fixed model `log Lambda`
+  - choosing Mach-number ranges that avoid the singular behavior near `Mach = 1`
+  - setting the sampling density for the theoretical curve
+- The theoretical formula itself is intentionally left as a placeholder to be filled in later.
+
+### Notes
+
+- The present comparison to Ostriker (1999) should be treated as provisional, because the current simulations are 2D while the Ostriker expression is a 3D result.
+- Even so, matching the plotting normalization and preparing the overlay machinery is useful for qualitative comparison and for a smoother transition to later 3D runs.
+
 ## 2026-04-04
 
 ### Topic

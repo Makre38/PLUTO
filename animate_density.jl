@@ -2,6 +2,11 @@ using DelimitedFiles
 using Printf
 using Plots
 
+const ENABLE_LOG_RHO_CONTOURS = true
+const LOG_RHO_CONTOUR_LEVEL_COUNT = 8
+const LOG_RHO_CONTOUR_COLOR = :white
+const LOG_RHO_CONTOUR_LINEWIDTH = 0.4
+
 struct SnapshotMeta
     index::Int
     time::Float64
@@ -104,6 +109,16 @@ function read_snapshot_density(data_path::AbstractString, meta::SnapshotMeta, nx
     return Array(@view(rho[:, :, 1]))
 end
 
+function contour_levels(vmin::Float64, vmax::Float64; nlevel::Int = LOG_RHO_CONTOUR_LEVEL_COUNT)
+    if nlevel <= 0 || !isfinite(vmin) || !isfinite(vmax)
+        return Float64[]
+    end
+    if isapprox(vmin, vmax; atol = 0.0, rtol = 1.0e-12)
+        return [vmin]
+    end
+    return collect(range(vmin, vmax; length = nlevel + 2))[2:end-1]
+end
+
 function main()
     if isempty(ARGS)
         error("Usage: julia animate_density.jl RUN_DIR [OUTPUT_GIF]")
@@ -137,11 +152,12 @@ function main()
         log_rho_min = min(log_rho_min, minimum(log_rho))
         log_rho_max = max(log_rho_max, maximum(log_rho))
     end
+    log_rho_levels = contour_levels(log_rho_min, log_rho_max)
 
     anim = @animate for (meta, path) in zip(metas, data_paths)
         rho = read_snapshot_density(path, meta, nx, ny, nz)
         log_rho = log10.(max.(rho, rho_floor))
-        heatmap(
+        plt = heatmap(
             x,
             y,
             permutedims(log_rho, (2, 1)),
@@ -152,6 +168,18 @@ function main()
             clims = (log_rho_min, log_rho_max),
             aspect_ratio = :equal,
         )
+        if ENABLE_LOG_RHO_CONTOURS && !isempty(log_rho_levels)
+            contour!(
+                plt,
+                x,
+                y,
+                permutedims(log_rho, (2, 1));
+                levels = log_rho_levels,
+                color = LOG_RHO_CONTOUR_COLOR,
+                linewidth = LOG_RHO_CONTOUR_LINEWIDTH,
+                label = "",
+            )
+        end
         scatter!([0.0], [0.0], color = :white, markerstrokecolor = :black, label = "", markersize = 3)
     end
 
