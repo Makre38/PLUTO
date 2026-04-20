@@ -172,12 +172,12 @@ function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector
         if r < rcut || r == 0.0
             continue
         end
-        delta_mass = (rho[i, j] - rho0) * dx[i] * dy[j]
+        delta_mass = (rho[i, j] - rho0) * dx[i] * dy[j] * pi * abs(ry)
         inv_r3 = 1.0 / (r2 * r)
         fx += mp * delta_mass * rx * inv_r3
         fy += mp * delta_mass * ry * inv_r3
     end
-    return fx, fy
+    return fx / 2, fy
 end
 
 function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float64, rbhl::Float64, cs0::Float64)

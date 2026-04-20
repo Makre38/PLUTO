@@ -3,7 +3,7 @@ using Printf
 using Plots
 
 const ENABLE_LOG_RHO_CONTOURS = true
-const LOG_RHO_CONTOUR_LEVEL_COUNT = 8
+const LOG_RHO_CONTOUR_LEVEL_COUNT = 10
 const LOG_RHO_CONTOUR_COLOR = :white
 const LOG_RHO_CONTOUR_LINEWIDTH = 0.4
 
