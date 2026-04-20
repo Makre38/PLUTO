@@ -1,5 +1,48 @@
 # Change Log
 
+## 2026-04-20
+
+### Topic
+
+Initial 3D Cartesian workflow added alongside the existing 2D setup.
+
+### Why this was done
+
+The current 2D workflow is useful for setup and debugging, but it cannot fully answer whether the drag behavior and wake structure are being biased by the dimensional reduction itself.
+
+The immediate need is to launch small 3D smoke tests with the same overall physical picture:
+
+- uniform inflow
+- softened point-mass potential
+- post-processed drag estimate
+
+This first 3D step is intentionally static-grid and lightweight, without AMR yet.
+
+### What was changed
+
+- Added `definitions_3d.h` and `init_3d.c` for a 3D Cartesian PLUTO problem with:
+  - inflow at `X1-beg`
+  - outflow elsewhere
+  - softened point-mass gravity in all three directions
+- Added `_3d` workflow scripts under `scripts/`:
+  - `prepare_one_case_3d.sh`
+  - `prepare_mach_sweep_3d.sh`
+  - `run_one_case_local_3d.sh`
+  - `submit_one_case_slurm_3d.sh`
+  - `submit_sweep_serial_3d.sh`
+  - `submit_sweep_batches_3d.sh`
+- The 3D case generator now writes:
+  - a separate `runs_3d/` case tree by default
+  - a cubic cross-stream box with `y` and `z` spans matched
+  - `run_summary.txt` entries for `nz`, `zmin`, `zmax`, and `x3p`
+- Added `force_from_run_3d.jl` to compute `Fx` from a true 3D volume integral instead of the previous 2D-to-3D reconstruction idea.
+- Updated `README.md` with the 3D script names and a minimal smoke-test example.
+
+### Notes
+
+- The new 3D local run script supports both serial and MPI execution through `MPI_TASKS`.
+- This is only the first 3D step; sweep aggregation and 3D visualization are still less mature than the existing 2D tooling.
+
 ## 2026-04-16
 
 ### Topic
