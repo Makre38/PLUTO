@@ -87,7 +87,7 @@ function read_snapshot_var(data_path::AbstractString, meta::SnapshotMeta, var_na
 
     offset = (var_index - 1) * ncell
     field = reshape(@view(values[offset + 1:offset + ncell]), nx, ny, nz)
-    return Array(@view(field[:, :, 1]))
+    return Array(field)
 end
 
 function parse_run_summary(summary_path::AbstractString)
@@ -102,8 +102,8 @@ function parse_run_summary(summary_path::AbstractString)
     return summary
 end
 
-function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                       mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
+function compute_force_2d(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
+                          mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
     fx = 0.0
     fy = 0.0
 
@@ -126,6 +126,34 @@ function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector
     return fx, fy
 end
 
+function compute_force_3d(rho::AbstractArray{Float64, 3},
+                          x::AbstractVector, y::AbstractVector, z::AbstractVector,
+                          dx::AbstractVector, dy::AbstractVector, dz::AbstractVector;
+                          mp::Float64, rho0::Float64,
+                          xp::Float64, yp::Float64, zp::Float64, rcut::Float64)
+    fx = 0.0
+    fy = 0.0
+    fz = 0.0
+
+    for k in eachindex(z), j in eachindex(y), i in eachindex(x)
+        rx = x[i] - xp
+        ry = y[j] - yp
+        rz = z[k] - zp
+        r2 = rx * rx + ry * ry + rz * rz
+        r = sqrt(r2)
+        if r < rcut || r == 0.0
+            continue
+        end
+        delta_mass = (rho[i, j, k] - rho0) * dx[i] * dy[j] * dz[k]
+        inv_r3 = 1.0 / (r2 * r)
+        fx += mp * delta_mass * rx * inv_r3
+        fy += mp * delta_mass * ry * inv_r3
+        fz += mp * delta_mass * rz * inv_r3
+    end
+
+    return fx, fy, fz
+end
+
 function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float64, rbhl::Float64, cs0::Float64)
     values = [abs(log(meta.time * cs0 / rbhl) - target_log_lambda) for meta in metas if meta.time > 0.0]
     valid = [meta for meta in metas if meta.time > 0.0]
@@ -133,12 +161,54 @@ function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float6
     return valid[argmin(values)]
 end
 
-function main()
-    if isempty(ARGS)
-        error("Usage: julia force_from_run.jl RUN_DIR [TARGET_LOG_LAMBDA]")
+function parse_dimension_option(value::AbstractString)
+    value in ("auto", "2", "3") || error("Unsupported --dimension value: $(value). Use auto, 2, or 3.")
+    return value
+end
+
+function parse_cli_args(args::Vector{String})
+    if isempty(args)
+        error("Usage: julia force_from_run.jl RUN_DIR [TARGET_LOG_LAMBDA] [--dimension auto|2|3]")
     end
 
-    run_dir = abspath(ARGS[1])
+    run_dir = args[1]
+    target_log_lambda = nothing
+    dimension = "auto"
+    i = 2
+    while i <= length(args)
+        arg = args[i]
+        if arg == "--dimension"
+            i == length(args) && error("Missing value after --dimension")
+            dimension = parse_dimension_option(args[i + 1])
+            i += 2
+        elseif startswith(arg, "--dimension=")
+            dimension = parse_dimension_option(split(arg, "=", limit = 2)[2])
+            i += 1
+        elseif startswith(arg, "--")
+            error("Unknown option: $(arg)")
+        elseif target_log_lambda === nothing
+            target_log_lambda = parse(Float64, arg)
+            i += 1
+        else
+            error("Unexpected argument: $(arg)")
+        end
+    end
+
+    return run_dir, target_log_lambda, dimension
+end
+
+function infer_dimension(summary::Dict{String, String}, nz::Int)
+    if haskey(summary, "dimension")
+        parsed = parse(Int, summary["dimension"])
+        parsed in (2, 3) || error("Unsupported dimension in run_summary.txt: $(parsed)")
+        return parsed
+    end
+    return nz > 1 ? 3 : 2
+end
+
+function main()
+    run_dir_arg, requested_log_lambda, dimension_option = parse_cli_args(ARGS)
+    run_dir = abspath(run_dir_arg)
     summary_path = joinpath(run_dir, "run_summary.txt")
     isfile(summary_path) || error("Missing $(summary_path)")
     summary = parse_run_summary(summary_path)
@@ -159,26 +229,47 @@ function main()
     rho0 = parse(Float64, summary["rho0"])
     xp = parse(Float64, summary["x1p"])
     yp = parse(Float64, summary["x2p"])
+    zp = parse(Float64, get(summary, "x3p", "0.0"))
     rcut = rbhl
 
-    target_log_lambda = length(ARGS) >= 2 ? parse(Float64, ARGS[2]) : parse(Float64, summary["log_lambda_max"])
+    dimension = if dimension_option == "auto"
+        infer_dimension(summary, nz)
+    else
+        parse(Int, dimension_option)
+    end
+    if dimension == 3 && nz <= 1
+        error("Requested 3D force calculation, but grid has nz = $(nz)")
+    end
+
+    target_log_lambda = requested_log_lambda === nothing ? parse(Float64, summary["log_lambda_max"]) : requested_log_lambda
     meta = nearest_snapshot(metas, target_log_lambda, rbhl, cs0)
 
     data_path = joinpath(output_dir, @sprintf("data.%04d.dbl", meta.index))
     isfile(data_path) || error("Missing $(data_path)")
 
     rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
-    fx, fy = compute_force(rho, x, y, dx, dy; mp = mp, rho0 = rho0, xp = xp, yp = yp, rcut = rcut)
     log_lambda = log(meta.time * cs0 / rbhl)
 
     println("# run_dir = $(run_dir)")
+    println("# dimension = $(dimension)")
     println("# snapshot = $(meta.index)")
     @printf("# time = %.8e\n", meta.time)
     @printf("# log_lambda = %.8f\n", log_lambda)
     @printf("# rcut = %.8e\n", rcut)
-    @printf("Fx = %.12e\n", fx)
-    @printf("Fy = %.12e\n", fy)
-    @printf("Fdf = %.12e\n", -fx)
+    if dimension == 2
+        fx, fy = compute_force_2d(@view(rho[:, :, 1]), x, y, dx, dy; mp = mp, rho0 = rho0, xp = xp, yp = yp, rcut = rcut)
+        @printf("Fx = %.12e\n", fx)
+        @printf("Fy = %.12e\n", fy)
+        @printf("Fdf = %.12e\n", -fx)
+    elseif dimension == 3
+        fx, fy, fz = compute_force_3d(rho, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, xp = xp, yp = yp, zp = zp, rcut = rcut)
+        @printf("Fx = %.12e\n", fx)
+        @printf("Fy = %.12e\n", fy)
+        @printf("Fz = %.12e\n", fz)
+        @printf("Fdf = %.12e\n", -fx)
+    else
+        error("Unsupported dimension: $(dimension)")
+    end
 end
 
 main()
