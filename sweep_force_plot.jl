@@ -7,6 +7,7 @@ const PLOT_OSTRIKER_MODEL = true
 const OSTRIKER_LOG_LAMBDA = 2.0
 const OSTRIKER_MACH_RANGES = [(0.0, 0.8), (1.2, 3.0)]
 const OSTRIKER_SAMPLES_PER_RANGE = 100
+const FORCE_MODES = ("auto", "axisym", "2d", "3d")
 
 struct SnapshotMeta
     index::Int
@@ -95,7 +96,7 @@ function read_snapshot_var(data_path::AbstractString, meta::SnapshotMeta, var_na
 
     offset = (var_index - 1) * ncell
     field = reshape(@view(values[offset + 1:offset + ncell]), nx, ny, nz)
-    return Array(@view(field[:, :, 1]))
+    return Array(field)
 end
 
 function parse_key_value_file(path::AbstractString)
@@ -156,12 +157,34 @@ function get_run_params(run_dir::AbstractString)
         rho0 = getf("rho0", "RHO0"),
         x1p = haskey(summary, "x1p") ? parse(Float64, summary["x1p"]) : get(ini, "X1P", 0.0),
         x2p = haskey(summary, "x2p") ? parse(Float64, summary["x2p"]) : get(ini, "X2P", 0.0),
+        x3p = haskey(summary, "x3p") ? parse(Float64, summary["x3p"]) : get(ini, "X3P", 0.0),
+        dimension = haskey(summary, "dimension") ? parse(Int, summary["dimension"]) : 0,
         log_lambda_max = getf("log_lambda_max", "LOG_LAMBDA_MAX"),
     )
 end
 
-function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                       mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
+function compute_force_2d(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
+                          mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
+    fx = 0.0
+    fy = 0.0
+    for j in eachindex(y), i in eachindex(x)
+        rx = x[i] - xp
+        ry = y[j] - yp
+        r2 = rx * rx + ry * ry
+        r = sqrt(r2)
+        if r < rcut || r == 0.0
+            continue
+        end
+        delta_mass = (rho[i, j] - rho0) * dx[i] * dy[j]
+        inv_r3 = 1.0 / (r2 * r)
+        fx += mp * delta_mass * rx * inv_r3
+        fy += mp * delta_mass * ry * inv_r3
+    end
+    return fx, fy
+end
+
+function compute_force_axisym(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
+                              mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
     fx = 0.0
     fy = 0.0
     for j in eachindex(y), i in eachindex(x)
@@ -178,6 +201,32 @@ function compute_force(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector
         fy += mp * delta_mass * ry * inv_r3
     end
     return fx / 2, fy
+end
+
+function compute_force_3d(rho::AbstractArray{Float64, 3},
+                          x::AbstractVector, y::AbstractVector, z::AbstractVector,
+                          dx::AbstractVector, dy::AbstractVector, dz::AbstractVector;
+                          mp::Float64, rho0::Float64,
+                          xp::Float64, yp::Float64, zp::Float64, rcut::Float64)
+    fx = 0.0
+    fy = 0.0
+    fz = 0.0
+    for k in eachindex(z), j in eachindex(y), i in eachindex(x)
+        rx = x[i] - xp
+        ry = y[j] - yp
+        rz = z[k] - zp
+        r2 = rx * rx + ry * ry + rz * rz
+        r = sqrt(r2)
+        if r < rcut || r == 0.0
+            continue
+        end
+        delta_mass = (rho[i, j, k] - rho0) * dx[i] * dy[j] * dz[k]
+        inv_r3 = 1.0 / (r2 * r)
+        fx += mp * delta_mass * rx * inv_r3
+        fy += mp * delta_mass * ry * inv_r3
+        fz += mp * delta_mass * rz * inv_r3
+    end
+    return fx, fy, fz
 end
 
 function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float64, rbhl::Float64, cs0::Float64)
@@ -202,7 +251,22 @@ function ostriker_drag_normalized(mach::Float64; log_lambda::Float64 = OSTRIKER_
     return F_df
 end
 
-function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
+function infer_dimension(params, nz::Int)
+    if params.dimension in (2, 3)
+        return params.dimension
+    end
+    return nz > 1 ? 3 : 2
+end
+
+function resolve_force_mode(force_mode::AbstractString, dimension::Int)
+    force_mode in FORCE_MODES || error("Unsupported force mode: $(force_mode)")
+    if force_mode == "auto"
+        return dimension == 3 ? "3d" : "axisym"
+    end
+    return force_mode
+end
+
+function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; dimension_option::AbstractString = "auto", force_mode::AbstractString = "auto")
     params = get_run_params(run_dir)
     summary_path = joinpath(run_dir, "run_summary.txt")
     summary = isfile(summary_path) ? parse_key_value_file(summary_path) : Dict{String, String}()
@@ -219,16 +283,47 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64)
     data_path = joinpath(output_dir, @sprintf("data.%04d.dbl", meta.index))
     isfile(data_path) || error("Missing $(data_path)")
     rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
-    fx, fy = compute_force(rho, x, y, dx, dy; mp = params.mp, rho0 = params.rho0, xp = params.x1p, yp = params.x2p, rcut = params.rbhl)
+
+    dimension = dimension_option == "auto" ? infer_dimension(params, nz) : parse(Int, dimension_option)
+    dimension in (2, 3) || error("Unsupported dimension: $(dimension)")
+    mode = resolve_force_mode(force_mode, dimension)
+    if mode == "3d" && nz <= 1
+        error("Requested 3D force calculation, but grid has nz = $(nz)")
+    end
+
+    if mode == "3d"
+        fx, fy, fz = compute_force_3d(rho, x, y, z, dx, dy, dz;
+                                      mp = params.mp, rho0 = params.rho0,
+                                      xp = params.x1p, yp = params.x2p, zp = params.x3p,
+                                      rcut = params.rbhl)
+    elseif mode == "axisym"
+        fx, fy = compute_force_axisym(@view(rho[:, :, 1]), x, y, dx, dy;
+                                      mp = params.mp, rho0 = params.rho0,
+                                      xp = params.x1p, yp = params.x2p,
+                                      rcut = params.rbhl)
+        fz = NaN
+    elseif mode == "2d"
+        fx, fy = compute_force_2d(@view(rho[:, :, 1]), x, y, dx, dy;
+                                  mp = params.mp, rho0 = params.rho0,
+                                  xp = params.x1p, yp = params.x2p,
+                                  rcut = params.rbhl)
+        fz = NaN
+    else
+        error("Unsupported resolved force mode: $(mode)")
+    end
+
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
-    fdf_raw = fx
+    fdf_raw = -fx
     norm_factor = ostriker_normalization(params.rho0, params.mp, params.cs0)
 
     return (
         mach = params.mach,
+        dimension = dimension,
+        force_mode = mode,
         target_log_lambda = target_log_lambda,
         fx = fx,
         fy = fy,
+        fz = fz,
         fdf_raw = fdf_raw,
         fdf_norm = fdf_raw / norm_factor,
         norm_factor = norm_factor,
@@ -246,11 +341,12 @@ end
 
 function write_results_table(table_path::AbstractString, results)
     open(table_path, "w") do io
-        println(io, "# Mach target_log_lambda actual_log_lambda snapshot Fx Fy Fdf_raw Fdf_norm norm_factor run_dir")
+        println(io, "# Mach dimension force_mode target_log_lambda actual_log_lambda snapshot Fx Fy Fz Fdf_raw Fdf_norm norm_factor run_dir")
         for r in results
-            @printf(io, "%.8f %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %s\n",
-                    r.mach, r.target_log_lambda, r.actual_log_lambda, r.snapshot,
-                    r.fx, r.fy, r.fdf_raw, r.fdf_norm, r.norm_factor, r.run_dir)
+            @printf(io, "%.8f %d %s %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %.12e %s\n",
+                    r.mach, r.dimension, r.force_mode, r.target_log_lambda,
+                    r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fz,
+                    r.fdf_raw, r.fdf_norm, r.norm_factor, r.run_dir)
         end
     end
 end
@@ -271,42 +367,88 @@ function plot_ostriker_model!(plt)
     end
 end
 
+function parse_dimension_option(value::AbstractString)
+    value in ("auto", "2", "3") || error("Unsupported --dimension value: $(value). Use auto, 2, or 3.")
+    return value
+end
+
+function parse_force_mode_option(value::AbstractString)
+    value in FORCE_MODES || error("Unsupported --force-mode value: $(value). Use auto, axisym, 2d, or 3d.")
+    return value
+end
+
 function parse_cli_targets_and_prefix(runs_dir::AbstractString, args::Vector{String})
     target_log_lambdas = DEFAULT_TARGET_LOG_LAMBDAS
     output_prefix = joinpath(runs_dir, "force_summary")
+    dimension = "auto"
+    force_mode = "auto"
+    positionals = String[]
 
-    if length(args) >= 1
-        first_arg = args[1]
-        parsed_target = tryparse(Float64, first_arg)
-        if parsed_target === nothing
-            output_prefix = abspath(first_arg)
+    i = 1
+    while i <= length(args)
+        arg = args[i]
+        if arg == "--dimension"
+            i == length(args) && error("Missing value after --dimension")
+            dimension = parse_dimension_option(args[i + 1])
+            i += 2
+        elseif startswith(arg, "--dimension=")
+            dimension = parse_dimension_option(split(arg, "=", limit = 2)[2])
+            i += 1
+        elseif arg == "--force-mode"
+            i == length(args) && error("Missing value after --force-mode")
+            force_mode = parse_force_mode_option(args[i + 1])
+            i += 2
+        elseif startswith(arg, "--force-mode=")
+            force_mode = parse_force_mode_option(split(arg, "=", limit = 2)[2])
+            i += 1
+        elseif startswith(arg, "--")
+            error("Unknown option: $(arg)")
         else
-            target_log_lambdas = [parsed_target]
-            if length(args) >= 2
-                output_prefix = abspath(args[2])
-            end
+            push!(positionals, arg)
+            i += 1
         end
     end
 
-    return target_log_lambdas, output_prefix
+    if length(positionals) >= 1
+        parsed_target = tryparse(Float64, positionals[1])
+        if parsed_target === nothing
+            output_prefix = abspath(positionals[1])
+        else
+            target_log_lambdas = [parsed_target]
+            if length(positionals) >= 2
+                output_prefix = abspath(positionals[2])
+            end
+        end
+    end
+    length(positionals) <= 2 || error("Too many positional arguments: $(join(positionals, " "))")
+
+    return target_log_lambdas, output_prefix, dimension, force_mode
+end
+
+function list_run_dirs(runs_dir::AbstractString)
+    return sort(filter(readdir(runs_dir; join = true)) do path
+        isdir(path) || return false
+        basename(path) == "output" && return false
+        return isfile(joinpath(path, "run_summary.txt")) || isfile(joinpath(path, "pluto.ini"))
+    end)
 end
 
 function main()
     if isempty(ARGS)
-        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA|OUTPUT_PREFIX] [OUTPUT_PREFIX]")
+        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA|OUTPUT_PREFIX] [OUTPUT_PREFIX] [--dimension auto|2|3] [--force-mode auto|axisym|2d|3d]")
     end
 
     runs_dir = abspath(ARGS[1])
-    target_log_lambdas, output_prefix = parse_cli_targets_and_prefix(runs_dir, ARGS[2:end])
+    target_log_lambdas, output_prefix, dimension_option, force_mode = parse_cli_targets_and_prefix(runs_dir, ARGS[2:end])
 
-    run_dirs = sort(filter(path -> isdir(path) && basename(path) != "output", readdir(runs_dir; join = true)))
+    run_dirs = list_run_dirs(runs_dir)
     isempty(run_dirs) && error("No run directories found in $(runs_dir)")
 
     results = NamedTuple[]
     for target_log_lambda in target_log_lambdas
         for run_dir in run_dirs
             try
-                push!(results, compute_run_force(run_dir, target_log_lambda))
+                push!(results, compute_run_force(run_dir, target_log_lambda; dimension_option = dimension_option, force_mode = force_mode))
             catch err
                 @warn "Skipping run" run_dir target_log_lambda err
             end
