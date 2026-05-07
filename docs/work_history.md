@@ -1,0 +1,219 @@
+# Work History
+
+## 2026-05-07
+
+### Topic
+
+Documentation log restructuring.
+
+### What changed
+
+- Consolidated loose project notes into a `docs/` structure:
+  - `current_status.md`
+  - `next_actions.md`
+  - `decisions.md`
+  - `work_history.md`
+  - `archive/initial_setup_log.md`
+- Kept `README.md` as the command-level workflow entry point.
+- Preserved useful uncommitted note content by folding it into the new documents.
+
+## 2026-04-29
+
+### Topic
+
+3D force post-processing and sweep aggregation updates.
+
+### Why this was done
+
+The `dev/3d-mpi` branch already contained a 3D PLUTO workflow, and a remote one-case 3D run was confirmed to complete and produce force output.
+
+The next need was to make the Julia post-processing usable for both existing 2D runs and new 3D runs without splitting the workflow into unrelated scripts.
+
+The desired sign convention for plotted drag was also fixed:
+
+- `Fdf = -Fx`
+- this makes the drag quantity positive when the gas force is in the expected backward direction, i.e. `Fx < 0`
+
+### What changed
+
+- `force_from_run.jl` was updated to support both 2D and 3D one-case force calculations.
+- The script now keeps loaded density as a 3D array internally.
+- For 2D runs, it still computes force from the `z = 1` slice using the existing 2D area-element definition.
+- For 3D runs, it computes `Fx`, `Fy`, and `Fz` using the full 3D volume element:
+  - `dx * dy * dz`
+- The one-case force script now accepts:
+  - `--dimension auto`
+  - `--dimension 2`
+  - `--dimension 3`
+- With `auto`, dimension is inferred from `run_summary.txt` when possible, otherwise from `nz`.
+- `x3p` is read from `run_summary.txt` when available and defaults to `0.0`.
+- `sweep_force_plot.jl` was updated to aggregate both 2D and 3D force results.
+- The sweep script now supports:
+  - `--dimension auto|2|3`
+  - `--force-mode auto|axisym|2d|3d`
+- The default `auto` mode keeps the old behavior for 2D-style runs by using the existing axisymmetric reconstruction.
+- For 3D runs, `auto` uses the true 3D volume integral.
+- A pure `2d` mode was added for the old area-element calculation when needed.
+- The sweep output table now records:
+  - `dimension`
+  - `force_mode`
+  - `Fz`
+  - `Fdf_raw`
+  - `Fdf_norm`
+- `Fdf_raw` is now computed as `-Fx` in the sweep output.
+- Non-case directories under a runs directory, such as `manifests/`, are skipped by requiring either `run_summary.txt` or `pluto.ini`.
+
+### Verification
+
+- See `docs/current_status.md` for the current verification summary.
+
+### Remaining work
+
+- Full PNG generation was not verified locally because the local Julia environment is missing `Plots`.
+- Remote verification of updated 3D sweep plotting should be done after the running jobs finish.
+- `animate_density.jl` still visualizes a 2D slice and has not yet been updated into a mature 3D visualization workflow.
+- The old `force_from_run_3d.jl` still exists; it can remain as a simple cross-check.
+- The physical choice of inner cutoff remains `rcut = rbhl`; sensitivity to this choice is still an open analysis item.
+- The Ostriker comparison remains meaningful primarily for the true 3D workflow.
+
+## 2026-04-20
+
+### Topic
+
+Initial 3D Cartesian workflow added alongside the existing 2D setup.
+
+### Why this was done
+
+The current 2D workflow is useful for setup and debugging, but it cannot fully answer whether drag behavior and wake structure are biased by dimensional reduction.
+
+The immediate need was to launch small 3D smoke tests with the same overall physical picture:
+
+- uniform inflow
+- softened point-mass potential
+- post-processed drag estimate
+
+This first 3D step was intentionally static-grid and lightweight, without AMR.
+
+### What changed
+
+- Added `definitions_3d.h` and `init_3d.c` for a 3D Cartesian PLUTO problem with:
+  - inflow at `X1-beg`
+  - outflow elsewhere
+  - softened point-mass gravity in all three directions
+- Added `_3d` workflow scripts under `scripts/`:
+  - `prepare_one_case_3d.sh`
+  - `prepare_mach_sweep_3d.sh`
+  - `run_one_case_local_3d.sh`
+  - `submit_one_case_slurm_3d.sh`
+  - `submit_sweep_serial_3d.sh`
+  - `submit_sweep_batches_3d.sh`
+- The 3D case generator now writes:
+  - a separate `runs_3d/` case tree by default
+  - a cubic cross-stream box with `y` and `z` spans matched
+  - `run_summary.txt` entries for `nz`, `zmin`, `zmax`, and `x3p`
+- Added `force_from_run_3d.jl` to compute `Fx` from a true 3D volume integral.
+- Updated `README.md` with the 3D script names and a minimal smoke-test example.
+
+## 2026-04-16
+
+### Topic
+
+Updates to `animate_density.jl` to overlay log-density contour lines on density snapshot plots.
+
+### Why this was done
+
+The density animation already showed the spatial structure of `log10 rho` as a heatmap, but color alone made subtle shape changes and wake geometry harder to read.
+
+### What changed
+
+- `animate_density.jl` now computes a shared set of contour levels from the global minimum and maximum of `log10 rho` across all snapshots.
+- Each animation frame still draws the existing `log10 rho` heatmap and now overlays contour lines of the same field using `contour!`.
+- Contour drawing parameters were added near the top of the script:
+  - whether contour drawing is enabled
+  - number of contour levels
+  - contour color
+  - contour line width
+- Contour levels are fixed across the animation so each contour has the same meaning frame to frame.
+
+### Verification
+
+- The updated script loaded in Julia with the final `main()` call suppressed.
+- A manual user check reported that the updated plotting behavior appeared to work.
+
+## 2026-04-09
+
+### Topic
+
+Updates to `sweep_force_plot.jl` for multi-target force comparison and cleaner plotting output.
+
+### Why this was done
+
+The previous plotting script handled only one target `log Lambda` value at a time and wrote a single summary table and plot.
+
+The workflow needed multiple `log Lambda` series on one figure and a provisional comparison against the Ostriker (1999) drag formula.
+
+### What changed
+
+- `sweep_force_plot.jl` now supports a default internal list of target `log Lambda` values.
+- The script still supports the previous single-target mode when a numeric `log Lambda` is given on the command line.
+- Output changed to:
+  - one combined PNG with multiple `log Lambda` series overplotted
+  - one `.dat` file per target `log Lambda`
+- Drag sign convention in plot output was adjusted so plotted drag appears positive for the expected backward force.
+- Plot legends now use `LaTeXStrings`.
+- Plotted drag is normalized to:
+  - `F_df / (4 pi rho0 (G M_p)^2 / cs0^2)`
+- Output tables now store:
+  - raw drag value
+  - normalized drag value
+  - normalization factor
+- A plotting hook for an Ostriker (1999) model curve was added, with options for:
+  - enabling or disabling the model overlay
+  - fixed model `log Lambda`
+  - Mach-number ranges that avoid the singular behavior near `Mach = 1`
+  - sampling density for the theoretical curve
+- The theoretical formula itself was intentionally left as a placeholder at that stage.
+
+### Notes
+
+- The comparison to Ostriker (1999) should be treated as provisional for 2D simulations.
+- Matching the plotting normalization and model overlay machinery remains useful for later 3D runs.
+
+## 2026-04-04
+
+### Topic
+
+Script layout reorganization for case preparation and execution workflow.
+
+### Why this was done
+
+The previous shell-script layout had become difficult to understand and operate, especially on a remote machine.
+
+Main issues:
+
+- generation scripts and Slurm submission flow were mixed together
+- file names did not clearly indicate whether they handled one case or a sweep
+- generated helper scripts under `runs/` made the execution path harder to follow
+- local execution flow and Slurm-specific flow were mixed in a way that was difficult to inspect during testing
+
+The immediate goal was infrastructure cleanup before further physics debugging.
+
+### What changed
+
+- The shell workflow was reorganized under `scripts/`.
+- Old top-level scripts were removed:
+  - `prepare_run.sh`
+  - `sweep_mach.sh`
+  - `run_all.sh`
+  - `job.sh`
+- Slurm submission now uses `sbatch --wrap` instead of copying a per-case `job.sh`.
+- Sweep case lists are stored as manifest files under `runs/manifests/`.
+- `README.md` was added to document script roles and typical command sequences.
+
+### Follow-up ideas recorded at the time
+
+- Investigate the origin of the upstream low-density hole near the potential center.
+- Compare EOS choices.
+- Consider using the Julia REPL for repeated calls to `animate_density.jl` if compilation time becomes important.
+- Investigate whether small random perturbations can reduce realization-specific vortex-street imprint in high-Mach runs.
+
