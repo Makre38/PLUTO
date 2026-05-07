@@ -26,6 +26,8 @@ Shell scripts live under `scripts/`.
   - Submit all cases listed in one manifest, one case per Slurm job, chained with dependencies.
 - `scripts/submit_sweep_serial_3d.sh`
   - Submit all 3D cases listed in one manifest, one case per Slurm job, chained with dependencies.
+- `scripts/submit_sweep_windowed_3d.sh`
+  - Submit all 3D cases listed in one manifest, one case per Slurm job, with a bounded number of concurrent jobs.
 - `scripts/submit_sweep_batches.sh`
   - Submit all cases listed in one manifest in batches, chained with dependencies.
 - `scripts/submit_sweep_batches_3d.sh`
@@ -107,6 +109,22 @@ SLURM_TIME_LIMIT=30-00:00:00 \
 ```bash
 MPI_TASKS=8 ./scripts/submit_one_case_slurm_3d.sh \
   runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d
+```
+
+### Submit a 3D sweep to Slurm with bounded concurrency
+
+```bash
+MPI_TASKS=8 MAX_CONCURRENT_JOBS=4 \
+  ./scripts/submit_sweep_windowed_3d.sh \
+  runs_3d/manifests/mach0.1-3.0_step0.1_mp1.0_ll2.0_rbhl2.0_3d.txt
+```
+
+Alternatively, cap the total requested MPI tasks:
+
+```bash
+MPI_TASKS=8 MAX_TOTAL_TASKS=32 \
+  ./scripts/submit_sweep_windowed_3d.sh \
+  runs_3d/manifests/mach0.1-3.0_step0.1_mp1.0_ll2.0_rbhl2.0_3d.txt
 ```
 
 ### Submit a sweep to Slurm in batches
