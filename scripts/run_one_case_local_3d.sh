@@ -29,11 +29,20 @@ else
   arch="${PLUTO_ARCH:-Linux.gcc.defs}"
 fi
 
-start_time="$(date)"
-echo "start: ${start_time}"
+start_epoch="$(date +%s)"
+echo "start: $(date)"
 echo "case dir: ${case_dir}"
 echo "arch: ${arch}"
 echo "mpi tasks: ${mpi_tasks}"
+
+finish_log() {
+  status=$?
+  end_epoch="$(date +%s)"
+  echo "end: $(date)"
+  echo "elapsed_sec: $((end_epoch - start_epoch))"
+  echo "exit_status: ${status}"
+}
+trap finish_log EXIT
 
 (
   cd "${case_dir}"
@@ -45,6 +54,3 @@ echo "mpi tasks: ${mpi_tasks}"
     ./pluto
   fi
 )
-
-finish_time="$(date)"
-echo "finish: ${finish_time}"

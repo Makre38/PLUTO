@@ -13,9 +13,18 @@ case_dir="$(cd "$1" && pwd)"
   exit 1
 }
 
-start_time="$(date)"
-echo "start: ${start_time}"
+start_epoch="$(date +%s)"
+echo "start: $(date)"
 echo "case dir: ${case_dir}"
+
+finish_log() {
+  status=$?
+  end_epoch="$(date +%s)"
+  echo "end: $(date)"
+  echo "elapsed_sec: $((end_epoch - start_epoch))"
+  echo "exit_status: ${status}"
+}
+trap finish_log EXIT
 
 (
   cd "${case_dir}"
@@ -23,6 +32,3 @@ echo "case dir: ${case_dir}"
   make
   ./pluto
 )
-
-finish_time="$(date)"
-echo "finish: ${finish_time}"

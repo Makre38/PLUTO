@@ -5,11 +5,11 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd "${script_dir}/.." && pwd)"
 
-mach="${MACH:-1.0}"
+mach="${MACH:-0.1}"
 mp="${MP:-1.0}"
 log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
 cells_per_rbhl="${CELLS_PER_RBHL:-2.0}"
-n_output="${N_OUTPUT:-200}"
+n_output="${N_OUTPUT:-20}"
 
 gamma="${GAMMA:-1.0001}"
 rho0="${RHO0:-1.0}"
@@ -24,7 +24,7 @@ upstream_min="${UPSTREAM_MIN:-5.0}"
 warn_cells="${WARN_CELLS:-2000000}"
 hard_cells="${HARD_CELLS:-8000000}"
 
-runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d}"
+runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d_timetest}"
 export_subdir="${EXPORT_SUBDIR:-export}"
 
 eval "$(awk -v mach="${mach}" \
