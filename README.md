@@ -43,6 +43,8 @@ Julia scripts:
   - Aggregate force results across a sweep.
 - `animate_density.jl`
   - Visualize density snapshots.
+- `plot_3d_diagnostics.jl`
+  - Plot 3D diagnostic slices through the perturber position, with `rsoft` and `rcut` overlays.
 
 ## Typical workflows
 
@@ -133,6 +135,19 @@ MPI_TASKS=8 MAX_TOTAL_TASKS=32 \
 BATCH_SIZE=5 ./scripts/submit_sweep_batches.sh \
   runs/manifests/mach0.1-3.0_step0.1_mp1.0_ll2.0_rbhl8.0.txt
 ```
+
+### Plot 3D diagnostic slices
+
+```bash
+julia plot_3d_diagnostics.jl \
+  runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d
+```
+
+The default plot shows signed-log fractional density perturbations on the
+`z = x3p` and `y = x2p` slices. Force-contribution views are available with
+`--quantity dfx`, `--quantity dfy`, or `--quantity dfdf`. Density animations can
+be generated with `--animate`, which writes an HTML player and PNG frames by
+default. Use `--stride N` and `--max-frames N` to limit animation size.
 
 ## Notes
 

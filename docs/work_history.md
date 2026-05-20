@@ -1,5 +1,14 @@
 # Work History
 
+## 2026-05-07 19:38 JST - Session Handoff
+
+- Purpose: reorganize scattered project logs into a human-readable `docs/` structure, improve runtime log tails, and add a 3D sweep submission mode with bounded concurrency.
+- Changes made: consolidated old loose notes into `docs/current_status.md`, `docs/next_actions.md`, `docs/decisions.md`, `docs/work_history.md`, and `docs/archive/initial_setup_log.md`; removed superseded `log.md`, `change_log.md`, `problem.md`, and absorbed the untracked `todo.md` content; updated 2D and 3D local runners to print `end`, `elapsed_sec`, and `exit_status` via an `EXIT` trap; added `scripts/submit_sweep_windowed_3d.sh`; documented the 3D windowed submission workflow in `README.md`.
+- Verification: checked shell syntax with `bash -n` for the changed runner scripts and the new windowed submitter; used fake `/tmp` cases to confirm runtime log tail output for success and failure paths; used a fake `sbatch` to confirm `MAX_CONCURRENT_JOBS` dependency windows and `MAX_TOTAL_TASKS / MPI_TASKS` concurrency calculation.
+- Not verified: no real PLUTO run was launched; no real Slurm job was submitted; no Julia analysis or plotting was run.
+- Incomplete or untouched: only the 3D windowed sweep submitter was added; no 2D equivalent was created; existing strict serial and batch submit scripts were left unchanged.
+- Next steps: use `MPI_TASKS=8 MAX_CONCURRENT_JOBS=4` or `MPI_TASKS=8 MAX_TOTAL_TASKS=32` for a small 3D sweep trial, then inspect `slurm-*.out` tails for elapsed time and compare throughput before scaling up.
+
 ## 2026-05-07
 
 ### Topic
@@ -216,4 +225,3 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Compare EOS choices.
 - Consider using the Julia REPL for repeated calls to `animate_density.jl` if compilation time becomes important.
 - Investigate whether small random perturbations can reduce realization-specific vortex-street imprint in high-Mach runs.
-
