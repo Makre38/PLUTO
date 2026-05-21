@@ -67,5 +67,6 @@ Partially verified or not yet verified:
 - The physical choice of inner cutoff is still effectively `rcut = rbhl`; this is a provisional analysis choice, not a validated physical conclusion.
 - The 2D-to-3D axisymmetric reconstruction in sweep analysis is useful as a diagnostic but may not represent the physics assumed by Ostriker (1999).
 - The old `problem.md` noted an inconsistency between `force_from_run.jl` and `sweep_force_plot.jl`; recent work reduced this by adding unified 2D/3D paths, but force-mode choices still need to be interpreted carefully.
-- The upstream low-density structure near the potential center still needs controlled diagnostic tests.
-
+- 3D density diagnostics show a suspicious low-density hole-like structure near the potential center. It appears numerical from the animation behavior, and at least one comparable-resolution 2D run did not show the same feature.
+- Some 3D runs can collapse to extremely small CFL timesteps. When this happens, diagnostic output suggests local Mach numbers become very large or diverge to infinity, likely from a local velocity, pressure, or density failure.
+- Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.

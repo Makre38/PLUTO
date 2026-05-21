@@ -47,16 +47,20 @@ Possible work:
 - Compare several values around `rbhl`, `rsoft`, and a few grid-cell widths.
 - Record whether the Mach trend changes qualitatively.
 
-### Upstream low-density structure
+### 3D low-density hole
 
 Goal:
 
-- Understand the origin of the upstream low-density hole near the potential center.
+- Understand the origin of the suspicious low-density hole-like structure near the potential center in 3D density diagnostics.
 
 Possible work:
 
+- Compare otherwise matched 2D and 3D runs at the same `cells_per_rbhl`.
 - Run controlled comparisons across EOS choices.
 - Check whether the structure changes with resolution, softening length, and boundary placement.
+- Add runtime diagnostics for `min(rho)`, `min(prs)`, `max(norm(v))`, `max(Mach)`, and the corresponding cell locations to identify where CFL timestep collapse starts.
+- Compare timestep-collapse cases against density-slice animations to see whether Mach divergence and the low-density hole are the same numerical failure.
+- Investigate whether PLUTO AMR/Chombo or a static locally refined grid can resolve the near-perturber region without increasing the full 3D domain by the cube of the target resolution.
 - Treat this as a physics and numerics check, not as a script-layout issue.
 
 ### Perturbed high-Mach runs
@@ -79,4 +83,3 @@ Possible work:
 - Record dated work in `docs/work_history.md`.
 - Record durable choices in `docs/decisions.md`.
 - Move resolved TODO items out of `docs/next_actions.md` after they are completed and summarized in `docs/work_history.md`.
-
