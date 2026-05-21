@@ -1,5 +1,14 @@
 # Work History
 
+## 2026-05-20 18:06 JST - Session Handoff
+
+- Purpose: add a visual diagnostic path for 3D PLUTO runs so density-field failures, softening-length effects, and force-contribution structure can be inspected by eye.
+- Changes made: added `plot_3d_diagnostics.jl`; it reads 3D PLUTO `double` output, selects the snapshot nearest a target `log_lambda`, plots `z = x3p` and `y = x2p` slices, uses signed-log fractional density perturbation `sign(delta) * log10(1 + abs(delta))`, overlays `rsoft` and `rcut = rbhl`, and supports `--quantity density|dfx|dfy|dfdf`; added density animation output through an HTML player plus PNG frames by default; documented the new script in `README.md`.
+- Verification: loaded the new Julia script enough to confirm CLI parsing; generated synthetic 3D PLUTO-like output under `/tmp`; produced density, `dfx`, `dfy`, and `dfdf` PNG diagnostics from the synthetic data; produced an HTML density animation with PNG frames; visually checked generated density and force-contribution plots.
+- Not verified: not yet run on real remote 3D PLUTO output in this local session; GIF animation output was not verified because the local NixOS environment could not execute the Julia/Plots ffmpeg artifact.
+- Incomplete or untouched: animation currently supports density only; force-contribution animation is intentionally left for later; no common reader module was extracted from the existing Julia scripts; no analytic linear-density comparison was added.
+- Next steps: run `plot_3d_diagnostics.jl` on remote 3D cases with different `RSOFT_FRAC` values, compare density slices and `dfdf` maps at the same target `log_lambda`, and add radial cumulative force diagnostics if the visual differences do not localize the softening sensitivity.
+
 ## 2026-05-07 19:38 JST - Session Handoff
 
 - Purpose: reorganize scattered project logs into a human-readable `docs/` structure, improve runtime log tails, and add a 3D sweep submission mode with bounded concurrency.
