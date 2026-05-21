@@ -255,7 +255,7 @@ end
 function parse_cli_args(args::Vector{String})
     isempty(args) && error("Usage: julia plot_3d_diagnostics.jl RUN_DIR [TARGET_LOG_LAMBDA] [--quantity density|dfx|dfy|dfdf] [--output PATH] [--animate] [--stride N] [--max-frames N]")
 
-    run_dir = args[1]
+    run_dir = nothing
     target_log_lambda = nothing
     output_path = nothing
     quantity = "density"
@@ -263,7 +263,7 @@ function parse_cli_args(args::Vector{String})
     stride = 1
     max_frames = 0
 
-    i = 2
+    i = 1
     while i <= length(args)
         arg = args[i]
         if arg == "--quantity"
@@ -299,6 +299,9 @@ function parse_cli_args(args::Vector{String})
             i += 1
         elseif startswith(arg, "--")
             error("Unknown option: $(arg)")
+        elseif run_dir === nothing
+            run_dir = arg
+            i += 1
         elseif target_log_lambda === nothing
             target_log_lambda = parse(Float64, arg)
             i += 1
@@ -307,6 +310,7 @@ function parse_cli_args(args::Vector{String})
         end
     end
 
+    run_dir === nothing && error("Missing RUN_DIR")
     quantity in VALID_QUANTITIES || error("Unsupported --quantity $(quantity). Use density, dfx, dfy, or dfdf.")
     stride >= 1 || error("--stride must be >= 1")
     max_frames >= 0 || error("--max-frames must be >= 0")
