@@ -145,8 +145,9 @@ julia plot_3d_diagnostics.jl \
 
 The default plot shows signed-log fractional density perturbations on the
 `z = x3p` and `y = x2p` slices. Force-contribution views are available with
-`--quantity dfx`, `--quantity dfy`, or `--quantity dfdf`. Density animations can
-be generated with `--animate`, which writes an HTML player and PNG frames by
+`--quantity dfx`, `--quantity dfy`, or `--quantity dfdf`. Velocity-magnitude
+views are available with `--quantity speed`. Density and speed animations can be
+generated with `--animate`, which writes an HTML player and PNG frames by
 default. Use `--stride N` and `--max-frames N` to limit animation size.
 
 ## Notes
