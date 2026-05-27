@@ -18,6 +18,9 @@ gamma="${GAMMA:-1.0001}"
 rho0="${RHO0:-1.0}"
 cs0="${CS0:-1.0}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
+sink_radius="${SINK_RADIUS:-0.0}"
+sink_timescale="${SINK_TIMESCALE:-0.0}"
+sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
 
 margin_up="${MARGIN_UP:-1.2}"
 margin_down="${MARGIN_DOWN:-1.3}"
@@ -31,7 +34,11 @@ runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d}"
 manifest_dir="${runs_dir}/manifests"
 mkdir -p "${manifest_dir}"
 
-manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d.txt"
+manifest_suffix=""
+if awk -v r="${sink_radius}" 'BEGIN { exit !(r > 0.0) }'; then
+  manifest_suffix="_sink${sink_radius}_tau${sink_timescale}"
+fi
+manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${manifest_suffix}.txt"
 manifest_path="${manifest_dir}/${manifest_name}"
 : > "${manifest_path}"
 
@@ -48,6 +55,9 @@ while IFS= read -r mach; do
     RHO0="${rho0}" \
     CS0="${cs0}" \
     RSOFT_FRAC="${rsoft_frac}" \
+    SINK_RADIUS="${sink_radius}" \
+    SINK_TIMESCALE="${sink_timescale}" \
+    SINK_RHO_FLOOR="${sink_rho_floor}" \
     MARGIN_UP="${margin_up}" \
     MARGIN_DOWN="${margin_down}" \
     MARGIN_Y="${margin_y}" \

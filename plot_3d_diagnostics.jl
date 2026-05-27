@@ -21,7 +21,7 @@ struct CliOptions
     max_frames::Int
 end
 
-const VALID_QUANTITIES = Set(["density", "speed", "dfx", "dfy", "dfdf"])
+const VALID_QUANTITIES = Set(["density", "speed", "mach", "dfx", "dfy", "dfdf"])
 
 function parse_run_summary(summary_path::AbstractString)
     summary = Dict{String, String}()
@@ -141,6 +141,16 @@ function velocity_norm(vx1, vx2, vx3)
     return sqrt.(vx1 .* vx1 .+ vx2 .* vx2 .+ vx3 .* vx3)
 end
 
+function local_mach(rho, prs, vx1, vx2, vx3, gamma::Float64)
+    speed = velocity_norm(vx1, vx2, vx3)
+    cs2 = gamma .* prs ./ rho
+    mach = similar(speed)
+    for idx in eachindex(speed)
+        mach[idx] = cs2[idx] > 0.0 ? speed[idx] / sqrt(cs2[idx]) : NaN
+    end
+    return mach
+end
+
 function force_contribution(rho::Array{Float64, 3},
                             x::AbstractVector, y::AbstractVector, z::AbstractVector,
                             dx::AbstractVector, dy::AbstractVector, dz::AbstractVector;
@@ -200,6 +210,7 @@ end
 function quantity_label(quantity::AbstractString)
     quantity == "density" && return "sign(delta) log10(1 + |delta|)"
     quantity == "speed" && return "|v|"
+    quantity == "mach" && return "|v| / c_local"
     quantity == "dfx" && return "dFx per cell"
     quantity == "dfy" && return "dFy per cell"
     quantity == "dfdf" && return "dFdf = -dFx per cell"
@@ -208,12 +219,12 @@ end
 
 function quantity_color(quantity::AbstractString)
     quantity == "density" && return :balance
-    quantity == "speed" && return :viridis
+    quantity in ("speed", "mach") && return :viridis
     return :vik
 end
 
 function quantity_symmetric_clims(quantity::AbstractString)
-    return quantity != "speed"
+    return !(quantity in ("speed", "mach"))
 end
 
 function plot_slices(x, y, z, xy_values, xz_values;
@@ -261,7 +272,7 @@ end
 
 function load_snapshot_values(data_path::AbstractString, meta::SnapshotMeta, quantity::AbstractString,
                               nx::Int, ny::Int, nz::Int, x, y, z, dx, dy, dz;
-                              mp::Float64, rho0::Float64, xp::Float64, yp::Float64,
+                              mp::Float64, rho0::Float64, gamma::Float64, xp::Float64, yp::Float64,
                               zp::Float64, rcut::Float64, iy0::Int, iz0::Int)
     values = if quantity == "density"
         rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
@@ -271,6 +282,13 @@ function load_snapshot_values(data_path::AbstractString, meta::SnapshotMeta, qua
         vx2 = read_snapshot_var(data_path, meta, "vx2", nx, ny, nz)
         vx3 = read_snapshot_var(data_path, meta, "vx3", nx, ny, nz)
         velocity_norm(vx1, vx2, vx3)
+    elseif quantity == "mach"
+        rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
+        prs = read_snapshot_var(data_path, meta, "prs", nx, ny, nz)
+        vx1 = read_snapshot_var(data_path, meta, "vx1", nx, ny, nz)
+        vx2 = read_snapshot_var(data_path, meta, "vx2", nx, ny, nz)
+        vx3 = read_snapshot_var(data_path, meta, "vx3", nx, ny, nz)
+        local_mach(rho, prs, vx1, vx2, vx3, gamma)
     else
         rho = read_snapshot_var(data_path, meta, "rho", nx, ny, nz)
         force_contribution(rho, x, y, z, dx, dy, dz; quantity = quantity, mp = mp, rho0 = rho0, xp = xp, yp = yp, zp = zp, rcut = rcut)
@@ -279,7 +297,7 @@ function load_snapshot_values(data_path::AbstractString, meta::SnapshotMeta, qua
 end
 
 function parse_cli_args(args::Vector{String})
-    isempty(args) && error("Usage: julia plot_3d_diagnostics.jl RUN_DIR [TARGET_LOG_LAMBDA] [--quantity density|speed|dfx|dfy|dfdf] [--output PATH] [--animate] [--stride N] [--max-frames N]")
+    isempty(args) && error("Usage: julia plot_3d_diagnostics.jl RUN_DIR [TARGET_LOG_LAMBDA] [--quantity density|speed|mach|dfx|dfy|dfdf] [--output PATH] [--animate] [--stride N] [--max-frames N]")
 
     run_dir = nothing
     target_log_lambda = nothing
@@ -337,11 +355,11 @@ function parse_cli_args(args::Vector{String})
     end
 
     run_dir === nothing && error("Missing RUN_DIR")
-    quantity in VALID_QUANTITIES || error("Unsupported --quantity $(quantity). Use density, speed, dfx, dfy, or dfdf.")
+    quantity in VALID_QUANTITIES || error("Unsupported --quantity $(quantity). Use density, speed, mach, dfx, dfy, or dfdf.")
     stride >= 1 || error("--stride must be >= 1")
     max_frames >= 0 || error("--max-frames must be >= 0")
-    if animate && !(quantity in ("density", "speed"))
-        error("--animate currently supports --quantity density or speed only")
+    if animate && !(quantity in ("density", "speed", "mach"))
+        error("--animate currently supports --quantity density, speed, or mach only")
     end
 
     return CliOptions(run_dir, target_log_lambda, output_path, quantity, animate, stride, max_frames)
@@ -408,6 +426,7 @@ function main()
     nx, ny, nz = length(x), length(y), length(z)
     nz > 1 || error("This diagnostic plotter expects a 3D run, but nz = $(nz)")
 
+    gamma = parse(Float64, get(summary, "gamma", "1.0001"))
     mp = parse(Float64, summary["mp"])
     rbhl = parse(Float64, summary["rbhl"])
     rsoft = parse(Float64, summary["rsoft"])
@@ -429,7 +448,7 @@ function main()
         for meta in frame_metas
             data_path = joinpath(output_dir, @sprintf("data.%04d.dbl", meta.index))
             isfile(data_path) || error("Missing $(data_path)")
-            xy, xz = load_snapshot_values(data_path, meta, opts.quantity, nx, ny, nz, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, xp = xp, yp = yp, zp = zp, rcut = rcut, iy0 = iy0, iz0 = iz0)
+            xy, xz = load_snapshot_values(data_path, meta, opts.quantity, nx, ny, nz, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, gamma = gamma, xp = xp, yp = yp, zp = zp, rcut = rcut, iy0 = iy0, iz0 = iz0)
             push!(frame_values, (meta, xy, xz))
         end
         clims = finite_clims(vcat([item[2] for item in frame_values], [item[3] for item in frame_values]); symmetric = quantity_symmetric_clims(opts.quantity))
@@ -456,7 +475,7 @@ function main()
         meta = nearest_snapshot(metas, target_log_lambda, rbhl, cs0)
         data_path = joinpath(output_dir, @sprintf("data.%04d.dbl", meta.index))
         isfile(data_path) || error("Missing $(data_path)")
-        xy, xz = load_snapshot_values(data_path, meta, opts.quantity, nx, ny, nz, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, xp = xp, yp = yp, zp = zp, rcut = rcut, iy0 = iy0, iz0 = iz0)
+        xy, xz = load_snapshot_values(data_path, meta, opts.quantity, nx, ny, nz, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, gamma = gamma, xp = xp, yp = yp, zp = zp, rcut = rcut, iy0 = iy0, iz0 = iz0)
         clims = finite_clims([xy, xz]; symmetric = quantity_symmetric_clims(opts.quantity))
         log_lambda = log(meta.time * cs0 / rbhl)
         plt = plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims)

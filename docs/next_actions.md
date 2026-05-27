@@ -56,10 +56,11 @@ Goal:
 Possible work:
 
 - Compare otherwise matched 2D and 3D runs at the same `cells_per_rbhl`.
-- Run controlled comparisons across EOS choices.
+- Run controlled comparisons across EOS choices, especially `EOS IDEAL` with `gamma = 1.0001` versus a true isothermal setup if available.
 - Check whether the structure changes with resolution, softening length, and boundary placement.
 - Add runtime diagnostics for `min(rho)`, `min(prs)`, `max(norm(v))`, `max(Mach)`, and the corresponding cell locations to identify where CFL timestep collapse starts.
-- Compare timestep-collapse cases against density-slice animations to see whether Mach divergence and the low-density hole are the same numerical failure.
+- Compare timestep-collapse cases against density-slice and local-Mach animations to see whether Mach divergence and the low-density hole are the same numerical failure.
+- Investigate adding a sink-like gas removal region near the potential center. This may better approximate gas accretion onto a realistic black hole, and may also prevent the high-density central region from driving runaway local velocities or infinite Mach numbers that break the calculation.
 - Investigate whether PLUTO AMR/Chombo or a static locally refined grid can resolve the near-perturber region without increasing the full 3D domain by the cube of the target resolution.
 - Treat this as a physics and numerics check, not as a script-layout issue.
 

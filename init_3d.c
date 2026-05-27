@@ -23,6 +23,53 @@ static void SetAmbientState(double *v)
 #endif
 }
 
+static void ApplyCentralSink(const Data *d, Grid *grid)
+{
+  const double sink_radius = g_inputParam[SINK_RADIUS];
+  const double sink_timescale = g_inputParam[SINK_TIMESCALE];
+  const double rho_floor = g_inputParam[SINK_RHO_FLOOR];
+  const double rho0 = g_inputParam[RHO0];
+  const double cs0 = g_inputParam[CS0];
+  const double mach = g_inputParam[MACH];
+  const double gamma = g_inputParam[GAMMA];
+  const double x1p = g_inputParam[X1P];
+  const double x2p = g_inputParam[X2P];
+  const double x3p = g_inputParam[X3P];
+  const double target_rho = rho_floor > 0.0 ? rho_floor : rho0;
+  double sink_fraction = 1.0;
+  int i, j, k;
+
+  if (sink_radius <= 0.0) return;
+
+  if (sink_timescale > 0.0 && g_dt > 0.0) {
+    sink_fraction = 1.0 - exp(-g_dt/sink_timescale);
+    if (sink_fraction < 0.0) sink_fraction = 0.0;
+    if (sink_fraction > 1.0) sink_fraction = 1.0;
+  }
+
+  DOM_LOOP(k,j,i) {
+    const double dx = grid[IDIR].x[i] - x1p;
+    const double dy = grid[JDIR].x[j] - x2p;
+    const double dz = grid[KDIR].x[k] - x3p;
+    const double r2 = dx*dx + dy*dy + dz*dz;
+
+    if (r2 < sink_radius*sink_radius) {
+      double rho = d->Vc[RHO][k][j][i];
+
+      rho += sink_fraction*(target_rho - rho);
+      if (rho < target_rho) rho = target_rho;
+
+      d->Vc[RHO][k][j][i] = rho;
+      d->Vc[VX1][k][j][i] += sink_fraction*(mach*cs0 - d->Vc[VX1][k][j][i]);
+      d->Vc[VX2][k][j][i] += sink_fraction*(0.0 - d->Vc[VX2][k][j][i]);
+      d->Vc[VX3][k][j][i] += sink_fraction*(0.0 - d->Vc[VX3][k][j][i]);
+#if HAVE_ENERGY
+      d->Vc[PRS][k][j][i] = rho*cs0*cs0/gamma;
+#endif
+    }
+  }
+}
+
 void Init (double *v, double x1, double x2, double x3)
 {
   SetAmbientState(v);
@@ -60,7 +107,7 @@ void UserDefBoundary (const Data *d, RBox *box, int side, Grid *grid)
   int   i, j, k, nv;
 
   if (side == 0) {
-    DOM_LOOP(k,j,i){}
+    ApplyCentralSink(d, grid);
   }
 
   if (side == X1_BEG){

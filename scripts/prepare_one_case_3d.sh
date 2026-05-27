@@ -15,6 +15,9 @@ gamma="${GAMMA:-1.0001}"
 rho0="${RHO0:-1.0}"
 cs0="${CS0:-1.0}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
+sink_radius="${SINK_RADIUS:-0.0}"
+sink_timescale="${SINK_TIMESCALE:-0.0}"
+sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
 
 margin_up="${MARGIN_UP:-1.2}"
 margin_down="${MARGIN_DOWN:-1.3}"
@@ -34,6 +37,8 @@ eval "$(awk -v mach="${mach}" \
               -v n_output="${n_output}" \
               -v cs0="${cs0}" \
               -v rsoft_frac="${rsoft_frac}" \
+              -v sink_radius="${sink_radius}" \
+              -v sink_timescale="${sink_timescale}" \
               -v margin_up="${margin_up}" \
               -v margin_down="${margin_down}" \
               -v margin_y="${margin_y}" \
@@ -70,6 +75,9 @@ BEGIN {
   warn = (ncell > warn_cells) ? 1 : 0
   hard = (ncell > hard_cells) ? 1 : 0
   case_name = sprintf("mach%.3f_mp%.3f_ll%.3f_rbhl%.1f_3d", mach, mp, log_lambda_max, cells_per_rbhl)
+  if (sink_radius > 0.0) {
+    case_name = sprintf("%s_sink%.3g_tau%.3g", case_name, sink_radius, sink_timescale)
+  }
 
   printf("rbhl=%.17g\n", rbhl)
   printf("tmax=%.17g\n", tmax)
@@ -175,6 +183,9 @@ RSOFT                       ${rsoft}
 X1P                         0.0
 X2P                         0.0
 X3P                         0.0
+SINK_RADIUS                 ${sink_radius}
+SINK_TIMESCALE              ${sink_timescale}
+SINK_RHO_FLOOR              ${sink_rho_floor}
 EOF
 
 cat > "${case_dir}/run_summary.txt" <<EOF
@@ -185,8 +196,12 @@ rbhl = ${rbhl}
 tmax = ${tmax}
 vinf = ${vinf}
 rsoft = ${rsoft}
+sink_radius = ${sink_radius}
+sink_timescale = ${sink_timescale}
+sink_rho_floor = ${sink_rho_floor}
 cs0 = ${cs0}
 rho0 = ${rho0}
+gamma = ${gamma}
 dx_target = ${dx_target}
 dx_actual = ${dx_actual}
 dy_actual = ${dy_actual}
