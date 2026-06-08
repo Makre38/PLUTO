@@ -19,6 +19,8 @@ sink_radius="${SINK_RADIUS:-0.0}"
 sink_timescale="${SINK_TIMESCALE:-0.0}"
 sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
 sink_velocity_factor="${SINK_VELOCITY_FACTOR:-1.0}"
+cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
+cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
 
 margin_up="${MARGIN_UP:-1.2}"
 margin_down="${MARGIN_DOWN:-1.3}"
@@ -163,7 +165,7 @@ tab       -1.0  -1
 ppm       -1.0  -1
 png       -1.0  -1
 log        1
-analysis  -1.0  -1
+analysis  -1.0  1
 
 [Particles]
 
@@ -188,6 +190,8 @@ SINK_RADIUS                 ${sink_radius}
 SINK_TIMESCALE              ${sink_timescale}
 SINK_RHO_FLOOR              ${sink_rho_floor}
 SINK_VELOCITY_FACTOR        ${sink_velocity_factor}
+CS_ALERT_THRESHOLD          ${cs_alert_threshold}
+CS_ALERT_EVERY_STEPS        ${cs_alert_every_steps}
 EOF
 
 cat > "${case_dir}/run_summary.txt" <<EOF
@@ -202,6 +206,8 @@ sink_radius = ${sink_radius}
 sink_timescale = ${sink_timescale}
 sink_rho_floor = ${sink_rho_floor}
 sink_velocity_factor = ${sink_velocity_factor}
+cs_alert_threshold = ${cs_alert_threshold}
+cs_alert_every_steps = ${cs_alert_every_steps}
 cs0 = ${cs0}
 rho0 = ${rho0}
 gamma = ${gamma}

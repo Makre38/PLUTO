@@ -7,7 +7,7 @@
 #define  TIME_STEPPING                  RK2
 #define  NTRACER                        0
 #define  PARTICLES                      NO
-#define  USER_DEF_PARAMETERS            13
+#define  USER_DEF_PARAMETERS            15
 
 /* -- physics dependent declarations -- */
 
@@ -35,6 +35,8 @@
 #define  SINK_TIMESCALE                 10
 #define  SINK_RHO_FLOOR                 11
 #define  SINK_VELOCITY_FACTOR           12
+#define  CS_ALERT_THRESHOLD             13
+#define  CS_ALERT_EVERY_STEPS           14
 
 /* [Beg] user-defined constants (do not change this line) */
 

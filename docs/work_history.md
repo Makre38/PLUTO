@@ -1,5 +1,13 @@
 # Work History
 
+## 2026-06-08 14:23 JST - Sound-Speed Alert Diagnostic
+
+- Purpose: add a first runtime diagnostic for the CFL-collapse investigation that works without enabling the central sink, focused specifically on detecting whether the local sound speed becomes abnormally small.
+- Changes made: added 3D PLUTO user parameters `CS_ALERT_THRESHOLD` and `CS_ALERT_EVERY_STEPS`; enabled per-step `Analysis()` calls in generated 3D cases; implemented a `DOM_LOOP` scan in `Analysis()` that finds the minimum local sound speed from `sqrt(gamma * prs / rho)` for ideal-gas runs, treats non-positive `rho` or `prs` as invalid states, and logs the location plus local `rho`, `prs`, velocity, speed, and Mach number when the threshold is crossed; documented the diagnostic in `README.md`.
+- Verification: ran `bash -n scripts/prepare_one_case_3d.sh scripts/prepare_mach_sweep_3d.sh`; generated a no-sink 3D case with `CS_ALERT_THRESHOLD=1.0e-6` and confirmed `pluto.ini` contains `analysis -1.0 1`, `SINK_RADIUS=0.0`, and the alert parameters; compiled that case with `make clean ARCH=Linux.gcc.defs && make ARCH=Linux.gcc.defs`; generated a tiny no-sink case with `CS_ALERT_THRESHOLD=2.0`, ran `./pluto -maxsteps 1`, and confirmed `CS_ALERT` lines are printed and `diagnostics_cs_alert_3d.dat` is written; ran the default-threshold no-sink case for `-maxsteps 1` and confirmed no alert file is created.
+- Not verified: MPI behavior is not reduced to a single global minimum yet; `mpicc` is not available locally, so MPI compile and MPI alert logging were not tested; no failing production run has been rerun with the diagnostic.
+- Next steps: run a failing no-sink 3D case with this diagnostic enabled, inspect the first `CS_ALERT` location and local `rho`/`prs`, and then add complementary max-speed or max-Mach diagnostics if the sound speed does not explain the failure.
+
 ## 2026-06-08 13:20 JST - Compile Fix
 
 - Purpose: move the uncommitted configurable 3D sink velocity work onto `dev/3d-sink-velocity-factor` and verify that a generated 3D sink case compiles against the local PLUTO install.
