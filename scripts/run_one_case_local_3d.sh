@@ -28,7 +28,7 @@ if (( mpi_tasks > 1 )); then
 else
   arch="${PLUTO_ARCH:-Linux.gcc.defs}"
 fi
-mpi_launcher="${MPI_LAUNCHER:-mpirun}"
+mpi_launcher="${MPI_LAUNCHER:-srun}"
 case "${mpi_launcher}" in
   mpirun|srun) ;;
   *)
