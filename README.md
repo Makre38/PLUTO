@@ -68,12 +68,15 @@ This creates a directory like `runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d/`.
 
 A central sink-like sponge can be enabled for 3D cases by setting
 `SINK_RADIUS`. Inside that radius, density is relaxed toward
-`SINK_RHO_FLOOR`, velocity toward the ambient inflow, and pressure toward the
-local nearly-isothermal value over `SINK_TIMESCALE`. The default
-`SINK_RADIUS=0.0` disables the sink.
+`SINK_RHO_FLOOR`, velocity toward `SINK_VELOCITY_FACTOR` times the ambient
+inflow, and pressure toward the local nearly-isothermal value over
+`SINK_TIMESCALE`. The default `SINK_RADIUS=0.0` disables the sink, and the
+default `SINK_VELOCITY_FACTOR=1.0` preserves the original ambient-inflow sink
+velocity. Use `SINK_VELOCITY_FACTOR=0.0` to relax the sink velocity toward rest.
 
 ```bash
 SINK_RADIUS=0.05 SINK_TIMESCALE=0.01 SINK_RHO_FLOOR=1.0e-6 \
+SINK_VELOCITY_FACTOR=0.0 \
   MACH=0.5 MP=1.0 LOG_LAMBDA_MAX=1.0 CELLS_PER_RBHL=2 N_OUTPUT=10 \
   ./scripts/prepare_one_case_3d.sh
 ```

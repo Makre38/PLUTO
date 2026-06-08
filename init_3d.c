@@ -28,6 +28,7 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
   const double sink_radius = g_inputParam[SINK_RADIUS];
   const double sink_timescale = g_inputParam[SINK_TIMESCALE];
   const double rho_floor = g_inputParam[SINK_RHO_FLOOR];
+  const double sink_velocity_factor = g_inputParam[SINK_VELOCITY_FACTOR];
   const double rho0 = g_inputParam[RHO0];
   const double cs0 = g_inputParam[CS0];
   const double mach = g_inputParam[MACH];
@@ -48,9 +49,9 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
   }
 
   DOM_LOOP(k,j,i) {
-    const double dx = grid[IDIR].x[i] - x1p;
-    const double dy = grid[JDIR].x[j] - x2p;
-    const double dz = grid[KDIR].x[k] - x3p;
+    const double dx = grid->x[IDIR][i] - x1p;
+    const double dy = grid->x[JDIR][j] - x2p;
+    const double dz = grid->x[KDIR][k] - x3p;
     const double r2 = dx*dx + dy*dy + dz*dz;
 
     if (r2 < sink_radius*sink_radius) {
@@ -60,7 +61,7 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
       if (rho < target_rho) rho = target_rho;
 
       d->Vc[RHO][k][j][i] = rho;
-      d->Vc[VX1][k][j][i] += sink_fraction*(mach*cs0 - d->Vc[VX1][k][j][i]);
+      d->Vc[VX1][k][j][i] += sink_fraction*(sink_velocity_factor*mach*cs0 - d->Vc[VX1][k][j][i]);
       d->Vc[VX2][k][j][i] += sink_fraction*(0.0 - d->Vc[VX2][k][j][i]);
       d->Vc[VX3][k][j][i] += sink_fraction*(0.0 - d->Vc[VX3][k][j][i]);
 #if HAVE_ENERGY

@@ -1,5 +1,22 @@
 # Work History
 
+## 2026-06-08 13:20 JST - Compile Fix
+
+- Purpose: move the uncommitted configurable 3D sink velocity work onto `dev/3d-sink-velocity-factor` and verify that a generated 3D sink case compiles against the local PLUTO install.
+- Changes made: fixed `ApplyCentralSink()` coordinate access from `grid[IDIR].x[i]`-style indexing to the PLUTO 4.4 `Grid *` API, `grid->x[IDIR][i]`; updated `local_make` to replace strict `-std=c17` with `-std=gnu17` so PLUTO's `drand48()`/`srand48()` usage is declared on the local glibc toolchain.
+- Verification: regenerated a temporary 3D sink case at `runs_3d_timetest/mach0.500_mp1.000_ll0.100_rbhl1.0_3d_sink0.05_tau0.01`; ran `make clean ARCH=Linux.gcc.defs && make ARCH=Linux.gcc.defs` in that case; serial PLUTO compile completed successfully.
+- Not verified: MPI compile was not run because `mpicc` was not found in the local environment; the generated `pluto` executable was not launched, so no simulation output or diagnostics were produced.
+- Next steps: run the same generated-case compile with `ARCH=Linux.mpicc.defs` on an MPI-capable environment; then compare no-sink, `SINK_VELOCITY_FACTOR=1.0`, and `SINK_VELOCITY_FACTOR=0.0` runs at fixed Mach, `RSOFT_FRAC`, and resolution.
+
+## 2026-05-28 18:33 JST - Session Handoff
+
+- Purpose: make the 3D central sink velocity target configurable so sink runs can test both the previous ambient-inflow sponge behavior and a perturber-frame rest sink.
+- Changes made: added the 3D PLUTO user parameter `SINK_VELOCITY_FACTOR`; increased `USER_DEF_PARAMETERS` from 12 to 13; changed `ApplyCentralSink()` so the sink-region target x-velocity is `SINK_VELOCITY_FACTOR * Mach * cs0` while the transverse target velocities remain zero; threaded `SINK_VELOCITY_FACTOR` through `scripts/prepare_one_case_3d.sh` and `scripts/prepare_mach_sweep_3d.sh`; wrote the value to generated `pluto.ini` and `run_summary.txt`; documented `SINK_VELOCITY_FACTOR=0.0` as the way to relax sink velocity toward rest while preserving `1.0` as the default old behavior.
+- Verification: ran `bash -n scripts/prepare_one_case_3d.sh scripts/prepare_mach_sweep_3d.sh`; generated a temporary one-case 3D run with `SINK_VELOCITY_FACTOR=0.0` and confirmed `pluto.ini` and `run_summary.txt` include the value; generated a temporary one-Mach 3D sweep with `SINK_VELOCITY_FACTOR=0.25` and confirmed the generated case receives the value and the manifest is written; ran `git diff --check`.
+- Not verified: PLUTO C compilation was not run because no local PLUTO source tree is installed yet; no remote compile or simulation was launched; no force, density, speed, or local-Mach diagnostics were generated for the new velocity-factor sink variants.
+- Incomplete or untouched: the earlier likely const-correctness compile issue in `ApplyCentralSink(const Data *d, Grid *grid)` remains unresolved; the sink still modifies primitive variables directly rather than using a conservative source-term or mass-removal accounting path; no spatial taper has been added at `SINK_RADIUS`, so the sink is still top-hat in space.
+- Next steps: install or copy a PLUTO source tree locally and compile a generated 3D case to catch `init.c`/PLUTO API errors quickly; compare no-sink, `SINK_VELOCITY_FACTOR=1.0`, and `SINK_VELOCITY_FACTOR=0.0` runs at fixed Mach, `RSOFT_FRAC`, and resolution; inspect density, speed, and local-Mach diagnostics before using any sink result in force interpretation.
+
 ## 2026-05-27 23:22 JST - Session Handoff
 
 - Purpose: resume the 3D numerical-failure investigation around the potential center and add a first implementation path for sink-like gas removal near the perturber.
