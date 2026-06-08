@@ -186,7 +186,9 @@ The default plot shows signed-log fractional density perturbations on the
 and local-Mach views are available with `--quantity speed` and `--quantity mach`.
 Density, speed, and Mach animations can be generated with `--animate`, which
 writes an HTML player and PNG frames by default. Use `--stride N` and
-`--max-frames N` to limit animation size.
+`--max-frames N` to limit animation size. The perturber marker and `rsoft` /
+`rcut` radius overlays are hidden by default; add `--show-overlays` to draw
+them.
 
 ## Notes
 

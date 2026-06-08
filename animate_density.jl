@@ -180,7 +180,6 @@ function main()
                 label = "",
             )
         end
-        scatter!([0.0], [0.0], color = :white, markerstrokecolor = :black, label = "", markersize = 3)
     end
 
     gif(anim, output_gif, fps = min(length(metas), 12))

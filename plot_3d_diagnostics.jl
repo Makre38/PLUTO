@@ -19,6 +19,7 @@ struct CliOptions
     animate::Bool
     stride::Int
     max_frames::Int
+    show_overlays::Bool
 end
 
 const VALID_QUANTITIES = Set(["density", "speed", "mach", "dfx", "dfy", "dfdf"])
@@ -230,7 +231,7 @@ end
 function plot_slices(x, y, z, xy_values, xz_values;
                      quantity::AbstractString, meta::SnapshotMeta, log_lambda::Float64,
                      xp::Float64, yp::Float64, zp::Float64, rsoft::Float64, rcut::Float64,
-                     clims::Tuple{Float64, Float64})
+                     clims::Tuple{Float64, Float64}, show_overlays::Bool)
     color = quantity_color(quantity)
     title_suffix = @sprintf("t = %.4g, logLambda = %.4f", meta.time, log_lambda)
     pxy = heatmap(
@@ -245,8 +246,10 @@ function plot_slices(x, y, z, xy_values, xz_values;
         color = color,
         aspect_ratio = :equal,
     )
-    overlay_radii!(pxy, xp, yp, rsoft, rcut)
-    scatter!(pxy, [xp], [yp]; color = :white, markerstrokecolor = :black, label = "", markersize = 3)
+    if show_overlays
+        overlay_radii!(pxy, xp, yp, rsoft, rcut)
+        scatter!(pxy, [xp], [yp]; color = :white, markerstrokecolor = :black, label = "", markersize = 3)
+    end
 
     pxz = heatmap(
         x,
@@ -260,8 +263,10 @@ function plot_slices(x, y, z, xy_values, xz_values;
         color = color,
         aspect_ratio = :equal,
     )
-    overlay_radii!(pxz, xp, zp, rsoft, rcut)
-    scatter!(pxz, [xp], [zp]; color = :white, markerstrokecolor = :black, label = "", markersize = 3)
+    if show_overlays
+        overlay_radii!(pxz, xp, zp, rsoft, rcut)
+        scatter!(pxz, [xp], [zp]; color = :white, markerstrokecolor = :black, label = "", markersize = 3)
+    end
 
     return plot(pxy, pxz; layout = (1, 2), size = (1400, 620))
 end
@@ -297,7 +302,7 @@ function load_snapshot_values(data_path::AbstractString, meta::SnapshotMeta, qua
 end
 
 function parse_cli_args(args::Vector{String})
-    isempty(args) && error("Usage: julia plot_3d_diagnostics.jl RUN_DIR [TARGET_LOG_LAMBDA] [--quantity density|speed|mach|dfx|dfy|dfdf] [--output PATH] [--animate] [--stride N] [--max-frames N]")
+    isempty(args) && error("Usage: julia plot_3d_diagnostics.jl RUN_DIR [TARGET_LOG_LAMBDA] [--quantity density|speed|mach|dfx|dfy|dfdf] [--output PATH] [--animate] [--stride N] [--max-frames N] [--show-overlays]")
 
     run_dir = nothing
     target_log_lambda = nothing
@@ -306,6 +311,7 @@ function parse_cli_args(args::Vector{String})
     animate = false
     stride = 1
     max_frames = 0
+    show_overlays = false
 
     i = 1
     while i <= length(args)
@@ -341,6 +347,9 @@ function parse_cli_args(args::Vector{String})
         elseif startswith(arg, "--max-frames=")
             max_frames = parse(Int, split(arg, "=", limit = 2)[2])
             i += 1
+        elseif arg == "--show-overlays"
+            show_overlays = true
+            i += 1
         elseif startswith(arg, "--")
             error("Unknown option: $(arg)")
         elseif run_dir === nothing
@@ -362,7 +371,7 @@ function parse_cli_args(args::Vector{String})
         error("--animate currently supports --quantity density, speed, or mach only")
     end
 
-    return CliOptions(run_dir, target_log_lambda, output_path, quantity, animate, stride, max_frames)
+    return CliOptions(run_dir, target_log_lambda, output_path, quantity, animate, stride, max_frames, show_overlays)
 end
 
 function default_output_path(run_dir::AbstractString, quantity::AbstractString, target_log_lambda, animate::Bool)
@@ -455,7 +464,7 @@ function main()
         if lowercase(splitext(output_path)[2]) == ".gif"
             anim = @animate for (meta, xy, xz) in frame_values
                 log_lambda = meta.time > 0.0 ? log(meta.time * cs0 / rbhl) : -Inf
-                plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims)
+                plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims, show_overlays = opts.show_overlays)
             end
             gif(anim, output_path, fps = min(length(frame_values), 12))
         else
@@ -464,7 +473,7 @@ function main()
             frame_paths = String[]
             for (iframe, (meta, xy, xz)) in enumerate(frame_values)
                 log_lambda = meta.time > 0.0 ? log(meta.time * cs0 / rbhl) : -Inf
-                plt = plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims)
+                plt = plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims, show_overlays = opts.show_overlays)
                 frame_path = joinpath(frame_dir, @sprintf("frame_%04d.png", iframe))
                 savefig(plt, frame_path)
                 push!(frame_paths, frame_path)
@@ -478,7 +487,7 @@ function main()
         xy, xz = load_snapshot_values(data_path, meta, opts.quantity, nx, ny, nz, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, gamma = gamma, xp = xp, yp = yp, zp = zp, rcut = rcut, iy0 = iy0, iz0 = iz0)
         clims = finite_clims([xy, xz]; symmetric = quantity_symmetric_clims(opts.quantity))
         log_lambda = log(meta.time * cs0 / rbhl)
-        plt = plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims)
+        plt = plot_slices(x, y, z, xy, xz; quantity = opts.quantity, meta = meta, log_lambda = log_lambda, xp = xp, yp = yp, zp = zp, rsoft = rsoft, rcut = rcut, clims = clims, show_overlays = opts.show_overlays)
         savefig(plt, output_path)
     end
 
