@@ -102,6 +102,11 @@ MPI_TASKS=4 ./scripts/run_one_case_local_3d.sh \
   runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d
 ```
 
+For MPI runs, `MPI_LAUNCHER` selects the launcher used after compilation.
+The default is `mpirun`; on Slurm systems, `MPI_LAUNCHER=srun` may be required.
+The runner writes build and run stage markers to `run_stage_3d.log` in the case
+directory.
+
 ### Prepare a Mach sweep
 
 ```bash
@@ -133,6 +138,13 @@ SLURM_TIME_LIMIT=30-00:00:00 \
 
 ```bash
 MPI_TASKS=8 ./scripts/submit_one_case_slurm_3d.sh \
+  runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d
+```
+
+If the cluster expects Slurm to launch MPI tasks, use:
+
+```bash
+MPI_TASKS=8 MPI_LAUNCHER=srun ./scripts/submit_one_case_slurm_3d.sh \
   runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d
 ```
 

@@ -1,5 +1,12 @@
 # Work History
 
+## 2026-06-08 15:48 JST - Slurm Run Stage Logging
+
+- Purpose: make failed 3D Slurm jobs distinguish compile failures from MPI launch/runtime failures, and allow switching the MPI launcher on clusters where `srun` is required.
+- Changes made: added stage markers to `scripts/run_one_case_local_3d.sh` before and after `make clean`, `make`, and PLUTO execution; wrote the same markers to `run_stage_3d.log` in the case directory; logged the last completed stage in the exit trap; added `MPI_LAUNCHER=mpirun|srun` support; resolved case paths to absolute paths in `scripts/submit_one_case_slurm_3d.sh`; passed `MPI_LAUNCHER` through the Slurm `--wrap` command; documented `MPI_LAUNCHER=srun` usage in `README.md`.
+- Verification: shell syntax and fake-submit checks were run locally. Real Slurm execution and MPI launch behavior must be verified on the remote cluster.
+- Next steps: resubmit the failing case with `MPI_TASKS=16 MPI_LAUNCHER=srun`; inspect both Slurm stdout/stderr and the case-local `run_stage_3d.log` if it fails again.
+
 ## 2026-06-08 14:23 JST - Sound-Speed Alert Diagnostic
 
 - Purpose: add a first runtime diagnostic for the CFL-collapse investigation that works without enabling the central sink, focused specifically on detecting whether the local sound speed becomes abnormally small.
