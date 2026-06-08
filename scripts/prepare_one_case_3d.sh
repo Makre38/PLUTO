@@ -21,6 +21,8 @@ sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
 sink_velocity_factor="${SINK_VELOCITY_FACTOR:-1.0}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
+mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
+mach_alert_every_steps="${MACH_ALERT_EVERY_STEPS:-1}"
 
 margin_up="${MARGIN_UP:-1.2}"
 margin_down="${MARGIN_DOWN:-1.3}"
@@ -192,6 +194,8 @@ SINK_RHO_FLOOR              ${sink_rho_floor}
 SINK_VELOCITY_FACTOR        ${sink_velocity_factor}
 CS_ALERT_THRESHOLD          ${cs_alert_threshold}
 CS_ALERT_EVERY_STEPS        ${cs_alert_every_steps}
+MACH_ALERT_THRESHOLD        ${mach_alert_threshold}
+MACH_ALERT_EVERY_STEPS      ${mach_alert_every_steps}
 EOF
 
 cat > "${case_dir}/run_summary.txt" <<EOF
@@ -208,6 +212,8 @@ sink_rho_floor = ${sink_rho_floor}
 sink_velocity_factor = ${sink_velocity_factor}
 cs_alert_threshold = ${cs_alert_threshold}
 cs_alert_every_steps = ${cs_alert_every_steps}
+mach_alert_threshold = ${mach_alert_threshold}
+mach_alert_every_steps = ${mach_alert_every_steps}
 cs0 = ${cs0}
 rho0 = ${rho0}
 gamma = ${gamma}

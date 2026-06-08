@@ -92,20 +92,31 @@ void InitDomain (Data *d, Grid *grid)
 
 void Analysis (const Data *d, Grid *grid)
 {
-  const double threshold = g_inputParam[CS_ALERT_THRESHOLD];
-  const int every_steps = (int)g_inputParam[CS_ALERT_EVERY_STEPS];
-  static long int last_alert_step = -1;
-  static int header_written = 0;
+  const double cs_threshold = g_inputParam[CS_ALERT_THRESHOLD];
+  const int cs_every_steps = (int)g_inputParam[CS_ALERT_EVERY_STEPS];
+  const double mach_threshold = g_inputParam[MACH_ALERT_THRESHOLD];
+  const int mach_every_steps = (int)g_inputParam[MACH_ALERT_EVERY_STEPS];
+  static long int last_cs_alert_step = -1;
+  static long int last_mach_alert_step = -1;
+  static int cs_header_written = 0;
+  static int mach_header_written = 0;
   double min_cs = HUGE_VAL;
   double min_rho = 0.0, min_prs = 0.0;
   double min_vx1 = 0.0, min_vx2 = 0.0, min_vx3 = 0.0;
   double min_speed = 0.0, min_mach = 0.0;
   double min_x1 = 0.0, min_x2 = 0.0, min_x3 = 0.0;
+  double max_mach = -HUGE_VAL;
+  double max_rho = 0.0, max_prs = 0.0, max_cs = 0.0;
+  double max_vx1 = 0.0, max_vx2 = 0.0, max_vx3 = 0.0;
+  double max_speed = 0.0;
+  double max_x1 = 0.0, max_x2 = 0.0, max_x3 = 0.0;
   int min_i = IBEG, min_j = JBEG, min_k = KBEG;
-  int invalid_state = 0;
+  int max_i = IBEG, max_j = JBEG, max_k = KBEG;
+  int cs_invalid_state = 0;
+  int mach_invalid_state = 0;
   int i, j, k;
 
-  if (threshold <= 0.0) return;
+  if (cs_threshold <= 0.0 && mach_threshold <= 0.0) return;
 
   DOM_LOOP(k,j,i) {
     const double rho = d->Vc[RHO][k][j][i];
@@ -151,47 +162,101 @@ void Analysis (const Data *d, Grid *grid)
       min_i = i;
       min_j = j;
       min_k = k;
-      invalid_state = bad;
-      if (bad) break;
+      cs_invalid_state = bad;
+    }
+
+    if (bad || mach > max_mach) {
+      max_mach = mach;
+      max_rho = rho;
+      max_prs = prs;
+      max_cs = cs;
+      max_vx1 = vx1;
+      max_vx2 = vx2;
+      max_vx3 = vx3;
+      max_speed = speed;
+      max_x1 = grid->x[IDIR][i];
+      max_x2 = grid->x[JDIR][j];
+      max_x3 = grid->x[KDIR][k];
+      max_i = i;
+      max_j = j;
+      max_k = k;
+      mach_invalid_state = bad;
     }
   }
 
-  if (!invalid_state && min_cs >= threshold) return;
-  if (last_alert_step >= 0 && every_steps > 0 &&
-      g_stepNumber - last_alert_step < every_steps) {
-    return;
-  }
+  if (cs_threshold > 0.0 && (cs_invalid_state || min_cs < cs_threshold) &&
+      !(last_cs_alert_step >= 0 && cs_every_steps > 0 &&
+        g_stepNumber - last_cs_alert_step < cs_every_steps)) {
+    last_cs_alert_step = g_stepNumber;
 
-  last_alert_step = g_stepNumber;
-
-  printLog(
-    "! CS_ALERT step=%ld t=%12.6e dt=%12.6e min_cs=%12.6e threshold=%12.6e "
-    "invalid=%d i=%d j=%d k=%d x=(%12.6e,%12.6e,%12.6e) "
-    "rho=%12.6e prs=%12.6e v=(%12.6e,%12.6e,%12.6e) speed=%12.6e mach=%12.6e\n",
-    g_stepNumber, g_time, g_dt, min_cs, threshold, invalid_state,
-    min_i, min_j, min_k, min_x1, min_x2, min_x3,
-    min_rho, min_prs, min_vx1, min_vx2, min_vx3, min_speed, min_mach
-  );
-
-  FILE *fp = fopen("diagnostics_cs_alert_3d.dat", "a");
-  if (fp == NULL) {
-    printLog("! CS_ALERT: could not open diagnostics_cs_alert_3d.dat\n");
-    return;
-  }
-  if (!header_written) {
-    fprintf(fp,
-      "# step t dt min_cs threshold invalid i j k x1 x2 x3 rho prs vx1 vx2 vx3 speed mach\n"
+    printLog(
+      "! CS_ALERT step=%ld t=%12.6e dt=%12.6e min_cs=%12.6e threshold=%12.6e "
+      "invalid=%d i=%d j=%d k=%d x=(%12.6e,%12.6e,%12.6e) "
+      "rho=%12.6e prs=%12.6e v=(%12.6e,%12.6e,%12.6e) speed=%12.6e mach=%12.6e\n",
+      g_stepNumber, g_time, g_dt, min_cs, cs_threshold, cs_invalid_state,
+      min_i, min_j, min_k, min_x1, min_x2, min_x3,
+      min_rho, min_prs, min_vx1, min_vx2, min_vx3, min_speed, min_mach
     );
-    header_written = 1;
+
+    FILE *fp = fopen("diagnostics_cs_alert_3d.dat", "a");
+    if (fp == NULL) {
+      printLog("! CS_ALERT: could not open diagnostics_cs_alert_3d.dat\n");
+    } else {
+      if (!cs_header_written) {
+        fprintf(fp,
+          "# step t dt min_cs threshold invalid i j k x1 x2 x3 rho prs vx1 vx2 vx3 speed mach\n"
+        );
+        cs_header_written = 1;
+      }
+      fprintf(fp,
+        "%ld %.17e %.17e %.17e %.17e %d %d %d %d "
+        "%.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e\n",
+        g_stepNumber, g_time, g_dt, min_cs, cs_threshold, cs_invalid_state,
+        min_i, min_j, min_k, min_x1, min_x2, min_x3,
+        min_rho, min_prs, min_vx1, min_vx2, min_vx3, min_speed, min_mach
+      );
+      fclose(fp);
+    }
   }
-  fprintf(fp,
-    "%ld %.17e %.17e %.17e %.17e %d %d %d %d "
-    "%.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e\n",
-    g_stepNumber, g_time, g_dt, min_cs, threshold, invalid_state,
-    min_i, min_j, min_k, min_x1, min_x2, min_x3,
-    min_rho, min_prs, min_vx1, min_vx2, min_vx3, min_speed, min_mach
-  );
-  fclose(fp);
+
+  if (mach_threshold > 0.0 && (mach_invalid_state || max_mach > mach_threshold) &&
+      !(last_mach_alert_step >= 0 && mach_every_steps > 0 &&
+        g_stepNumber - last_mach_alert_step < mach_every_steps)) {
+    char filename[128];
+    FILE *fp;
+
+    last_mach_alert_step = g_stepNumber;
+
+    printLog(
+      "! MACH_ALERT step=%ld t=%12.6e dt=%12.6e max_mach=%12.6e threshold=%12.6e "
+      "invalid=%d i=%d j=%d k=%d x=(%12.6e,%12.6e,%12.6e) "
+      "rho=%12.6e prs=%12.6e cs=%12.6e v=(%12.6e,%12.6e,%12.6e) speed=%12.6e\n",
+      g_stepNumber, g_time, g_dt, max_mach, mach_threshold, mach_invalid_state,
+      max_i, max_j, max_k, max_x1, max_x2, max_x3,
+      max_rho, max_prs, max_cs, max_vx1, max_vx2, max_vx3, max_speed
+    );
+
+    snprintf(filename, sizeof(filename), "diagnostics_mach_alert_3d.rank%04d.dat", prank);
+    fp = fopen(filename, "a");
+    if (fp == NULL) {
+      printLog("! MACH_ALERT: could not open %s\n", filename);
+    } else {
+      if (!mach_header_written) {
+        fprintf(fp,
+          "# step t dt max_mach threshold invalid i j k x1 x2 x3 rho prs cs vx1 vx2 vx3 speed\n"
+        );
+        mach_header_written = 1;
+      }
+      fprintf(fp,
+        "%ld %.17e %.17e %.17e %.17e %d %d %d %d "
+        "%.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e %.17e\n",
+        g_stepNumber, g_time, g_dt, max_mach, mach_threshold, mach_invalid_state,
+        max_i, max_j, max_k, max_x1, max_x2, max_x3,
+        max_rho, max_prs, max_cs, max_vx1, max_vx2, max_vx3, max_speed
+      );
+      fclose(fp);
+    }
+  }
 }
 
 #if PHYSICS == MHD

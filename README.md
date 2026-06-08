@@ -66,12 +66,14 @@ MACH=0.5 MP=1.0 LOG_LAMBDA_MAX=1.0 CELLS_PER_RBHL=2 N_OUTPUT=10 \
 
 This creates a directory like `runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d/`.
 
-3D cases run a per-step sound-speed alert through PLUTO `Analysis()`. If the
-minimum local sound speed falls below `CS_ALERT_THRESHOLD`, or if a cell has
-non-positive density or pressure, the code writes the cell location and local
-state to `diagnostics_cs_alert_3d.dat` and the runtime log. The default
-threshold is `1.0e-6`; set `CS_ALERT_THRESHOLD=0.0` to disable this diagnostic.
-`CS_ALERT_EVERY_STEPS` controls repeated alert logging while the condition
+3D cases run per-step runtime alerts through PLUTO `Analysis()`. If the
+minimum local sound speed falls below `CS_ALERT_THRESHOLD`, the code writes the
+cell location and local state to `diagnostics_cs_alert_3d.dat` and the runtime
+log. If the maximum local Mach number exceeds `MACH_ALERT_THRESHOLD`, it writes
+to `diagnostics_mach_alert_3d.rankNNNN.dat` and the runtime log. The default
+thresholds are `CS_ALERT_THRESHOLD=1.0e-6` and `MACH_ALERT_THRESHOLD=10.0`; set
+either threshold to `0.0` to disable that diagnostic. `CS_ALERT_EVERY_STEPS` and
+`MACH_ALERT_EVERY_STEPS` control repeated alert logging while a condition
 persists.
 
 A central sink-like sponge can be enabled for 3D cases by setting

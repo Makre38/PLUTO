@@ -1,5 +1,12 @@
 # Work History
 
+## 2026-06-08 16:25 JST - Max Mach Alert Diagnostic
+
+- Purpose: extend the CFL-collapse diagnostics after a no-`CS_ALERT` failure showed Mach diverging to infinity while the sound-speed threshold was not crossed.
+- Changes made: added 3D PLUTO user parameters `MACH_ALERT_THRESHOLD` and `MACH_ALERT_EVERY_STEPS`; updated `Analysis()` to track the maximum local Mach number and log the cell location plus local `rho`, `prs`, `cs`, velocity, and speed when the threshold is exceeded; wrote Mach alerts to rank-specific files named `diagnostics_mach_alert_3d.rankNNNN.dat` to avoid MPI write collisions; threaded the new parameters through one-case and sweep 3D generation; documented the diagnostic in `README.md`.
+- Verification: local shell syntax, generated-parameter checks, serial PLUTO compile, and a forced low-threshold smoke run were performed after the change.
+- Next steps: rerun the failing Mach 0.1 no-sink case with `MACH_ALERT_THRESHOLD=10.0` or lower and inspect the first `MACH_ALERT` rank file.
+
 ## 2026-06-08 15:48 JST - Slurm Run Stage Logging
 
 - Purpose: make failed 3D Slurm jobs distinguish compile failures from MPI launch/runtime failures, and allow switching the MPI launcher on clusters where `srun` is required.
