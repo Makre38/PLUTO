@@ -1,6 +1,6 @@
 # Current Status
 
-Last organized: 2026-05-07
+Last organized: 2026-06-08
 
 ## Project Aim
 
@@ -25,6 +25,12 @@ The intended physical comparison is motivated by Ostriker (1999). The 2D workflo
   - `force_from_run_3d.jl` remains as a simple older 3D cross-check
   - `sweep_force_plot.jl` aggregates sweep results for 2D and 3D cases
   - `animate_density.jl` visualizes 2D density snapshots with optional log-density contours
+  - `plot_3d_diagnostics.jl` visualizes 3D density, speed, Mach, and force-contribution slices
+- 3D runtime diagnostics:
+  - `CS_ALERT_THRESHOLD` logs cells where the local sound speed becomes too small
+  - `MACH_ALERT_THRESHOLD` logs cells where the local Mach number becomes too large
+  - `run_stage_3d.log` records prepare, build, and run stages for 3D local or Slurm execution
+  - `MPI_LAUNCHER` selects `mpirun` or `srun` for MPI execution after compilation
 
 ## Current Analysis State
 
@@ -40,6 +46,10 @@ The intended physical comparison is motivated by Ostriker (1999). The 2D workflo
   - `--force-mode auto|axisym|2d|3d`
 - For 3D runs, the preferred force calculation is a true 3D volume integral.
 - For 2D runs, the direct comparison to Ostriker (1999) is provisional because the simulation is not a true 3D setup.
+- Recent failing 3D no-sink runs indicate that the final stop is caused by local Mach divergence near the potential center.
+- No `CS_ALERT` appeared in the inspected failure, but later plots showed very small pressure near the origin for `gamma = 1.6666`.
+- Near-isothermal settings such as `gamma = 1.00001` did not show the same pressure-collapse failure mode in the tested case.
+- The current leading hypothesis is pressure or internal-energy depletion near the origin, followed by a small local sound speed and divergent local Mach number.
 
 ## Verification Status
 
@@ -53,6 +63,10 @@ Verified locally:
 - The sweep calculation path was tested on synthetic 2D and 3D cases.
 - The sweep `main()` path was tested through table generation with plotting functions stubbed out.
 - `animate_density.jl` loaded in Julia after the contour update, and a manual user check reported that the plotting behavior worked.
+- A generated 3D sink case compiled locally after the PLUTO API and `gnu17` fixes.
+- `CS_ALERT` and `MACH_ALERT` were smoke-tested locally with low thresholds.
+- Slurm wrapper changes were syntax-checked locally, and a remote run using `MPI_LAUNCHER=srun` compiled and launched.
+- Julia plotting scripts loaded locally after the origin-overlay cleanup, and `--show-overlays` parsing was checked.
 
 Partially verified or not yet verified:
 
@@ -61,6 +75,7 @@ Partially verified or not yet verified:
 - `animate_density.jl` still visualizes a 2D slice and is not yet a mature 3D visualization workflow.
 - Sensitivity of force results to the inner cutoff choice has not been measured.
 - The full 3D Mach sweep comparison against the Ostriker model remains open.
+- The pressure-collapse mechanism has not yet been captured by a dedicated pressure/internal-energy runtime alert.
 
 ## Known Issues And Risks
 
@@ -68,5 +83,6 @@ Partially verified or not yet verified:
 - The 2D-to-3D axisymmetric reconstruction in sweep analysis is useful as a diagnostic but may not represent the physics assumed by Ostriker (1999).
 - The old `problem.md` noted an inconsistency between `force_from_run.jl` and `sweep_force_plot.jl`; recent work reduced this by adding unified 2D/3D paths, but force-mode choices still need to be interpreted carefully.
 - 3D density diagnostics show a suspicious low-density hole-like structure near the potential center. It appears numerical from the animation behavior, and at least one comparable-resolution 2D run did not show the same feature.
-- Some 3D runs can collapse to extremely small CFL timesteps. When this happens, diagnostic output suggests local Mach numbers become very large or diverge to infinity, likely from a local velocity, pressure, or density failure.
+- Some 3D runs can collapse to extremely small CFL timesteps. The current best evidence points to pressure becoming extremely small near the origin for `gamma = 1.6666`, which then drives the local sound speed down and the local Mach number up to infinity.
+- The same failure mode has not been seen so far in near-isothermal tests such as `gamma = 1.00001`, so EOS and energy evolution are central to the next diagnosis.
 - Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.
