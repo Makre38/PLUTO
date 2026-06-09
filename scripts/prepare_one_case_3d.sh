@@ -11,7 +11,7 @@ log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
 cells_per_rbhl="${CELLS_PER_RBHL:-2.0}"
 n_output="${N_OUTPUT:-20}"
 
-gamma="${GAMMA:-1.0001}"
+gamma="${GAMMA:-1.6666}"
 rho0="${RHO0:-1.0}"
 cs0="${CS0:-1.0}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
