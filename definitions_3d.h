@@ -19,6 +19,7 @@
 #define  VISCOSITY                      NO
 #define  RADIATION                      NO
 #define  ROTATING_FRAME                 NO
+#define  INTERNAL_BOUNDARY              YES
 
 /* -- user-defined parameters (labels) -- */
 
