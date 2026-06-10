@@ -39,7 +39,9 @@ esac
 
 start_epoch="$(date +%s)"
 stage="startup"
-stage_log="${case_dir}/run_stage_3d.log"
+logs_dir="${case_dir}/logs"
+mkdir -p "${logs_dir}"
+stage_log="${logs_dir}/run_stage_3d.log"
 
 log_stage() {
   stage="$1"

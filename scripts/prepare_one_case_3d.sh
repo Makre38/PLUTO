@@ -121,6 +121,7 @@ mkdir -p "${runs_dir}"
 case_dir="${runs_dir}/${case_name}"
 mkdir -p "${case_dir}"
 mkdir -p "${case_dir}/${export_subdir}"
+mkdir -p "${case_dir}/logs"
 
 cp "${repo_dir}/definitions_3d.h" "${case_dir}/definitions.h"
 cp "${repo_dir}/init_3d.c" "${case_dir}/init.c"

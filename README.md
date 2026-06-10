@@ -68,13 +68,15 @@ This creates a directory like `runs_3d/mach0.500_mp1.000_ll1.000_rbhl2.0_3d/`.
 
 3D cases run per-step runtime alerts through PLUTO `Analysis()`. If the
 minimum local sound speed falls below `CS_ALERT_THRESHOLD`, the code writes the
-cell location and local state to `diagnostics_cs_alert_3d.dat` and the runtime
+cell location and local state to `logs/diagnostics_cs_alert_3d.rankNNNN.dat` and the runtime
 log. If the maximum local Mach number exceeds `MACH_ALERT_THRESHOLD`, it writes
-to `diagnostics_mach_alert_3d.rankNNNN.dat` and the runtime log. The default
+to `logs/diagnostics_mach_alert_3d.rankNNNN.dat` and the runtime log. The default
 thresholds are `CS_ALERT_THRESHOLD=1.0e-6` and `MACH_ALERT_THRESHOLD=10.0`; set
 either threshold to `0.0` to disable that diagnostic. `CS_ALERT_EVERY_STEPS` and
 `MACH_ALERT_EVERY_STEPS` control repeated alert logging while a condition
-persists.
+persists. `UserDefBoundary(..., side == 0)` calls are recorded in
+`logs/sink_boundary_3d.rankNNNN.dat`, including the number of cells inside the
+configured sink radius on that rank.
 
 A central sink-like sponge can be enabled for 3D cases by setting
 `SINK_RADIUS`. Inside that radius, density is relaxed toward
@@ -106,8 +108,8 @@ MPI_TASKS=4 ./scripts/run_one_case_local_3d.sh \
 
 For MPI runs, `MPI_LAUNCHER` selects the launcher used after compilation.
 The default is `mpirun`; on Slurm systems, `MPI_LAUNCHER=srun` may be required.
-The runner writes build and run stage markers to `run_stage_3d.log` in the case
-directory.
+The runner writes build and run stage markers to `logs/run_stage_3d.log` in the
+case directory.
 
 ### Prepare a Mach sweep
 

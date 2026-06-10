@@ -5,6 +5,12 @@
 */
 /* ///////////////////////////////////////////////////////////////////// */
 #include "pluto.h"
+#include <sys/stat.h>
+
+static void EnsureLogDir(void)
+{
+  mkdir("logs", 0775);
+}
 
 static void SetAmbientState(double *v)
 {
@@ -23,7 +29,7 @@ static void SetAmbientState(double *v)
 #endif
 }
 
-static void ApplyCentralSink(const Data *d, Grid *grid)
+static long int ApplyCentralSink(const Data *d, Grid *grid)
 {
   const double sink_radius = g_inputParam[SINK_RADIUS];
   const double sink_timescale = g_inputParam[SINK_TIMESCALE];
@@ -38,9 +44,10 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
   const double x3p = g_inputParam[X3P];
   const double target_rho = rho_floor > 0.0 ? rho_floor : rho0;
   double sink_fraction = 1.0;
+  long int sink_cells = 0;
   int i, j, k;
 
-  if (sink_radius <= 0.0) return;
+  if (sink_radius <= 0.0) return 0;
 
   if (sink_timescale > 0.0 && g_dt > 0.0) {
     sink_fraction = 1.0 - exp(-g_dt/sink_timescale);
@@ -57,6 +64,7 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
     if (r2 < sink_radius*sink_radius) {
       double rho = d->Vc[RHO][k][j][i];
 
+      sink_cells++;
       rho += sink_fraction*(target_rho - rho);
       if (rho < target_rho) rho = target_rho;
 
@@ -69,6 +77,41 @@ static void ApplyCentralSink(const Data *d, Grid *grid)
 #endif
     }
   }
+
+  return sink_cells;
+}
+
+static void WriteSinkBoundaryLog(int side, int vpos, long int sink_cells)
+{
+  static int header_written = 0;
+  static long int call_count = 0;
+  char filename[128];
+  FILE *fp;
+
+  call_count++;
+  EnsureLogDir();
+  snprintf(filename, sizeof(filename), "logs/sink_boundary_3d.rank%04d.dat", prank);
+  fp = fopen(filename, "a");
+  if (fp == NULL) {
+    printLog("! SINK_BOUNDARY: could not open %s\n", filename);
+    return;
+  }
+
+  if (!header_written) {
+    fprintf(fp,
+      "# call step t dt side vpos sink_radius sink_timescale sink_rho_floor sink_velocity_factor sink_cells\n"
+    );
+    header_written = 1;
+  }
+
+  fprintf(fp,
+    "%ld %ld %.17e %.17e %d %d %.17e %.17e %.17e %.17e %ld\n",
+    call_count, g_stepNumber, g_time, g_dt, side, vpos,
+    g_inputParam[SINK_RADIUS], g_inputParam[SINK_TIMESCALE],
+    g_inputParam[SINK_RHO_FLOOR], g_inputParam[SINK_VELOCITY_FACTOR],
+    sink_cells
+  );
+  fclose(fp);
 }
 
 void Init (double *v, double x1, double x2, double x3)
@@ -198,9 +241,14 @@ void Analysis (const Data *d, Grid *grid)
       min_rho, min_prs, min_vx1, min_vx2, min_vx3, min_speed, min_mach
     );
 
-    FILE *fp = fopen("diagnostics_cs_alert_3d.dat", "a");
+    char filename[128];
+    FILE *fp;
+
+    EnsureLogDir();
+    snprintf(filename, sizeof(filename), "logs/diagnostics_cs_alert_3d.rank%04d.dat", prank);
+    fp = fopen(filename, "a");
     if (fp == NULL) {
-      printLog("! CS_ALERT: could not open diagnostics_cs_alert_3d.dat\n");
+      printLog("! CS_ALERT: could not open %s\n", filename);
     } else {
       if (!cs_header_written) {
         fprintf(fp,
@@ -236,7 +284,8 @@ void Analysis (const Data *d, Grid *grid)
       max_rho, max_prs, max_cs, max_vx1, max_vx2, max_vx3, max_speed
     );
 
-    snprintf(filename, sizeof(filename), "diagnostics_mach_alert_3d.rank%04d.dat", prank);
+    EnsureLogDir();
+    snprintf(filename, sizeof(filename), "logs/diagnostics_mach_alert_3d.rank%04d.dat", prank);
     fp = fopen(filename, "a");
     if (fp == NULL) {
       printLog("! MACH_ALERT: could not open %s\n", filename);
@@ -273,7 +322,8 @@ void UserDefBoundary (const Data *d, RBox *box, int side, Grid *grid)
   int   i, j, k, nv;
 
   if (side == 0) {
-    ApplyCentralSink(d, grid);
+    long int sink_cells = ApplyCentralSink(d, grid);
+    WriteSinkBoundaryLog(side, box == NULL ? -1 : box->vpos, sink_cells);
   }
 
   if (side == X1_BEG){
