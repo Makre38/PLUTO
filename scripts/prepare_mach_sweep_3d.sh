@@ -20,8 +20,7 @@ cs0="${CS0:-1.0}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
 sink_radius="${SINK_RADIUS:-0.0}"
 sink_timescale="${SINK_TIMESCALE:-0.0}"
-sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
-sink_velocity_factor="${SINK_VELOCITY_FACTOR:-1.0}"
+sink_taper_power="${SINK_TAPER_POWER:-2.0}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
 mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
@@ -41,7 +40,7 @@ mkdir -p "${manifest_dir}"
 
 manifest_suffix=""
 if awk -v r="${sink_radius}" 'BEGIN { exit !(r > 0.0) }'; then
-  manifest_suffix="_sink${sink_radius}_tau${sink_timescale}"
+  manifest_suffix="_sink${sink_radius}_tau${sink_timescale}_taper${sink_taper_power}"
 fi
 manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${manifest_suffix}.txt"
 manifest_path="${manifest_dir}/${manifest_name}"
@@ -62,8 +61,7 @@ while IFS= read -r mach; do
     RSOFT_FRAC="${rsoft_frac}" \
     SINK_RADIUS="${sink_radius}" \
     SINK_TIMESCALE="${sink_timescale}" \
-    SINK_RHO_FLOOR="${sink_rho_floor}" \
-    SINK_VELOCITY_FACTOR="${sink_velocity_factor}" \
+    SINK_TAPER_POWER="${sink_taper_power}" \
     CS_ALERT_THRESHOLD="${cs_alert_threshold}" \
     CS_ALERT_EVERY_STEPS="${cs_alert_every_steps}" \
     MACH_ALERT_THRESHOLD="${mach_alert_threshold}" \

@@ -50,6 +50,7 @@ The intended physical comparison is motivated by Ostriker (1999). The 2D workflo
 - No `CS_ALERT` appeared in the inspected failure, but later plots showed very small pressure near the origin for `gamma = 1.6666`.
 - Near-isothermal settings such as `gamma = 1.00001` did not show the same pressure-collapse failure mode in the tested case.
 - The current leading hypothesis is pressure or internal-energy depletion near the origin, followed by a small local sound speed and divergent local Mach number.
+- The 3D central sink is now a smooth absorbing sink rather than the older top-hat reset: inside `SINK_RADIUS`, density and pressure relax toward the initial ambient state and all velocity components relax toward zero with a tapered `alpha(r)`.
 
 ## Verification Status
 
@@ -76,6 +77,7 @@ Partially verified or not yet verified:
 - Sensitivity of force results to the inner cutoff choice has not been measured.
 - The full 3D Mach sweep comparison against the Ostriker model remains open.
 - The pressure-collapse mechanism has not yet been captured by a dedicated pressure/internal-energy runtime alert.
+- The smooth absorbing sink has only been locally smoke-tested; it has not yet been tested on a production 3D failure case or used for force interpretation.
 
 ## Known Issues And Risks
 
@@ -85,4 +87,5 @@ Partially verified or not yet verified:
 - 3D density diagnostics show a suspicious low-density hole-like structure near the potential center. It appears numerical from the animation behavior, and at least one comparable-resolution 2D run did not show the same feature.
 - Some 3D runs can collapse to extremely small CFL timesteps. The current best evidence points to pressure becoming extremely small near the origin for `gamma = 1.6666`, which then drives the local sound speed down and the local Mach number up to infinity.
 - The same failure mode has not been seen so far in near-isothermal tests such as `gamma = 1.00001`, so EOS and energy evolution are central to the next diagnosis.
+- The smooth absorbing sink is a numerical and physical modeling choice. Its influence may propagate into the downstream wake, so force results need sensitivity checks against `SINK_RADIUS`, `SINK_TIMESCALE`, and the relation between `r_sink` and `r_cut`.
 - Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.

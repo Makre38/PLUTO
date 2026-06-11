@@ -1,5 +1,13 @@
 # Work History
 
+## 2026-06-11 14:41 JST - Smooth Absorbing Sink
+
+- Purpose: replace the discontinuous top-hat 3D sink with a smoother absorbing inner region before the next central-failure tests.
+- Changes made: created branch `dev/smooth-absorbing-sink`; replaced the legacy sink relaxation to `SINK_RHO_FLOOR` and `SINK_VELOCITY_FACTOR * v_inflow` with a smooth absorbing sink. Inside `SINK_RADIUS`, density and pressure now relax toward the initial ambient values, while all velocity components relax toward zero with `alpha = (1 - exp(-dt/SINK_TIMESCALE)) * max(0, 1 - r/SINK_RADIUS)^SINK_TAPER_POWER`. Removed `SINK_RHO_FLOOR` and `SINK_VELOCITY_FACTOR` from the generated 3D parameter set, added `SINK_TAPER_POWER`, and extended `logs/sink_boundary_3d.rankNNNN.dat` with `max_alpha`, min before/after density and pressure, and max before/after speed.
+- Verification: ran `bash -n scripts/prepare_one_case_3d.sh scripts/prepare_mach_sweep_3d.sh scripts/run_one_case_local_3d.sh`; ran `git diff --check`; generated small 3D sink cases under `/tmp`; confirmed generated `pluto.ini` and `run_summary.txt` contain `SINK_TAPER_POWER` and no longer contain `SINK_RHO_FLOOR` or `SINK_VELOCITY_FACTOR`; compiled a generated serial 3D case with `make clean ARCH=Linux.gcc.defs && make ARCH=Linux.gcc.defs`; ran `./pluto -maxsteps 1`; confirmed the sink boundary log is written with the new columns and that a test with `SINK_RADIUS=1.0` records nonzero sink cells and reduced speed after damping.
+- Not verified: MPI compilation/runtime behavior was not tested locally; no production 3D no-sink failure has been rerun with the smooth sink; no force or wake-structure sensitivity study has been performed yet.
+- Next steps: run matched no-sink and smooth-sink cases with `r_sink < r_cut`, inspect density, pressure, speed, local Mach, and drag, then vary `SINK_RADIUS`, `SINK_TIMESCALE`, and `SINK_TAPER_POWER` before interpreting sink-enabled force results physically.
+
 ## 2026-06-10 19:38 JST - Session Handoff
 
 - Purpose: make PLUTO runtime/debug logs easier to find under each case directory and pause before redesigning the central sink model.

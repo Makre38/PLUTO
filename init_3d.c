@@ -29,30 +29,56 @@ static void SetAmbientState(double *v)
 #endif
 }
 
-static long int ApplyCentralSink(const Data *d, Grid *grid)
+typedef struct SinkStats {
+  long int cells;
+  double max_alpha;
+  double min_rho_before;
+  double min_rho_after;
+  double min_prs_before;
+  double min_prs_after;
+  double max_speed_before;
+  double max_speed_after;
+} SinkStats;
+
+static SinkStats MakeEmptySinkStats(void)
+{
+  SinkStats stats;
+
+  stats.cells = 0;
+  stats.max_alpha = 0.0;
+  stats.min_rho_before = 1.0e99;
+  stats.min_rho_after = 1.0e99;
+  stats.min_prs_before = 1.0e99;
+  stats.min_prs_after = 1.0e99;
+  stats.max_speed_before = 0.0;
+  stats.max_speed_after = 0.0;
+
+  return stats;
+}
+
+static SinkStats ApplyCentralSink(const Data *d, Grid *grid)
 {
   const double sink_radius = g_inputParam[SINK_RADIUS];
   const double sink_timescale = g_inputParam[SINK_TIMESCALE];
-  const double rho_floor = g_inputParam[SINK_RHO_FLOOR];
-  const double sink_velocity_factor = g_inputParam[SINK_VELOCITY_FACTOR];
+  const double sink_taper_power = g_inputParam[SINK_TAPER_POWER] > 0.0 ? g_inputParam[SINK_TAPER_POWER] : 2.0;
   const double rho0 = g_inputParam[RHO0];
   const double cs0 = g_inputParam[CS0];
-  const double mach = g_inputParam[MACH];
   const double gamma = g_inputParam[GAMMA];
   const double x1p = g_inputParam[X1P];
   const double x2p = g_inputParam[X2P];
   const double x3p = g_inputParam[X3P];
-  const double target_rho = rho_floor > 0.0 ? rho_floor : rho0;
-  double sink_fraction = 1.0;
-  long int sink_cells = 0;
+  const double target_rho = rho0;
+  const double target_prs = rho0*cs0*cs0/gamma;
+  double alpha_time = 1.0;
+  SinkStats stats = MakeEmptySinkStats();
   int i, j, k;
 
-  if (sink_radius <= 0.0) return 0;
+  if (sink_radius <= 0.0) return stats;
 
   if (sink_timescale > 0.0 && g_dt > 0.0) {
-    sink_fraction = 1.0 - exp(-g_dt/sink_timescale);
-    if (sink_fraction < 0.0) sink_fraction = 0.0;
-    if (sink_fraction > 1.0) sink_fraction = 1.0;
+    alpha_time = 1.0 - exp(-g_dt/sink_timescale);
+    if (alpha_time < 0.0) alpha_time = 0.0;
+    if (alpha_time > 1.0) alpha_time = 1.0;
   }
 
   DOM_LOOP(k,j,i) {
@@ -62,26 +88,57 @@ static long int ApplyCentralSink(const Data *d, Grid *grid)
     const double r2 = dx*dx + dy*dy + dz*dz;
 
     if (r2 < sink_radius*sink_radius) {
-      double rho = d->Vc[RHO][k][j][i];
+      const double r = sqrt(r2);
+      const double q = 1.0 - r/sink_radius;
+      const double alpha_space = pow(q, sink_taper_power);
+      const double alpha = alpha_time*alpha_space;
+      const double rho_before = d->Vc[RHO][k][j][i];
+      const double vx1_before = d->Vc[VX1][k][j][i];
+      const double vx2_before = d->Vc[VX2][k][j][i];
+      const double vx3_before = d->Vc[VX3][k][j][i];
+      const double speed_before = sqrt(vx1_before*vx1_before + vx2_before*vx2_before + vx3_before*vx3_before);
+      double rho_after = rho_before + alpha*(target_rho - rho_before);
+      double prs_before = target_prs;
+      double prs_after = target_prs;
+      double vx1_after = vx1_before + alpha*(0.0 - vx1_before);
+      double vx2_after = vx2_before + alpha*(0.0 - vx2_before);
+      double vx3_after = vx3_before + alpha*(0.0 - vx3_before);
+      double speed_after;
 
-      sink_cells++;
-      rho += sink_fraction*(target_rho - rho);
-      if (rho < target_rho) rho = target_rho;
-
-      d->Vc[RHO][k][j][i] = rho;
-      d->Vc[VX1][k][j][i] += sink_fraction*(sink_velocity_factor*mach*cs0 - d->Vc[VX1][k][j][i]);
-      d->Vc[VX2][k][j][i] += sink_fraction*(0.0 - d->Vc[VX2][k][j][i]);
-      d->Vc[VX3][k][j][i] += sink_fraction*(0.0 - d->Vc[VX3][k][j][i]);
+      stats.cells++;
+      if (alpha > stats.max_alpha) stats.max_alpha = alpha;
+      if (rho_before < stats.min_rho_before) stats.min_rho_before = rho_before;
+      if (speed_before > stats.max_speed_before) stats.max_speed_before = speed_before;
 #if HAVE_ENERGY
-      d->Vc[PRS][k][j][i] = rho*cs0*cs0/gamma;
+      prs_before = d->Vc[PRS][k][j][i];
+      prs_after = prs_before + alpha*(target_prs - prs_before);
+      if (prs_before < stats.min_prs_before) stats.min_prs_before = prs_before;
+      d->Vc[PRS][k][j][i] = prs_after;
 #endif
+      speed_after = sqrt(vx1_after*vx1_after + vx2_after*vx2_after + vx3_after*vx3_after);
+
+      d->Vc[RHO][k][j][i] = rho_after;
+      d->Vc[VX1][k][j][i] = vx1_after;
+      d->Vc[VX2][k][j][i] = vx2_after;
+      d->Vc[VX3][k][j][i] = vx3_after;
+
+      if (rho_after < stats.min_rho_after) stats.min_rho_after = rho_after;
+      if (prs_after < stats.min_prs_after) stats.min_prs_after = prs_after;
+      if (speed_after > stats.max_speed_after) stats.max_speed_after = speed_after;
     }
   }
 
-  return sink_cells;
+  if (stats.cells == 0) {
+    stats.min_rho_before = 0.0;
+    stats.min_rho_after = 0.0;
+    stats.min_prs_before = 0.0;
+    stats.min_prs_after = 0.0;
+  }
+
+  return stats;
 }
 
-static void WriteSinkBoundaryLog(int side, int vpos, long int sink_cells)
+static void WriteSinkBoundaryLog(int side, int vpos, SinkStats stats)
 {
   static int header_written = 0;
   static long int call_count = 0;
@@ -99,17 +156,20 @@ static void WriteSinkBoundaryLog(int side, int vpos, long int sink_cells)
 
   if (!header_written) {
     fprintf(fp,
-      "# call step t dt side vpos sink_radius sink_timescale sink_rho_floor sink_velocity_factor sink_cells\n"
+      "# call step t dt side vpos sink_radius sink_timescale sink_taper_power sink_cells max_alpha min_rho_before min_rho_after min_prs_before min_prs_after max_speed_before max_speed_after\n"
     );
     header_written = 1;
   }
 
   fprintf(fp,
-    "%ld %ld %.17e %.17e %d %d %.17e %.17e %.17e %.17e %ld\n",
+    "%ld %ld %.17e %.17e %d %d %.17e %.17e %.17e %ld %.17e %.17e %.17e %.17e %.17e %.17e %.17e\n",
     call_count, g_stepNumber, g_time, g_dt, side, vpos,
     g_inputParam[SINK_RADIUS], g_inputParam[SINK_TIMESCALE],
-    g_inputParam[SINK_RHO_FLOOR], g_inputParam[SINK_VELOCITY_FACTOR],
-    sink_cells
+    g_inputParam[SINK_TAPER_POWER],
+    stats.cells, stats.max_alpha,
+    stats.min_rho_before, stats.min_rho_after,
+    stats.min_prs_before, stats.min_prs_after,
+    stats.max_speed_before, stats.max_speed_after
   );
   fclose(fp);
 }
@@ -322,8 +382,8 @@ void UserDefBoundary (const Data *d, RBox *box, int side, Grid *grid)
   int   i, j, k, nv;
 
   if (side == 0) {
-    long int sink_cells = ApplyCentralSink(d, grid);
-    WriteSinkBoundaryLog(side, box == NULL ? -1 : box->vpos, sink_cells);
+    SinkStats sink_stats = ApplyCentralSink(d, grid);
+    WriteSinkBoundaryLog(side, box == NULL ? -1 : box->vpos, sink_stats);
   }
 
   if (side == X1_BEG){

@@ -83,7 +83,8 @@ Possible work:
 - Add pressure and internal-energy threshold diagnostics, since current evidence points to very small `prs` near the origin for `gamma = 1.6666`.
 - Compare timestep-collapse cases against density-slice and local-Mach animations to see whether Mach divergence and the low-density hole are the same numerical failure.
 - Compare `gamma = 1.6666`, near-isothermal `gamma = 1.00001`, and a true isothermal PLUTO setup if available.
-- Investigate adding a sink-like gas removal region near the potential center. This may better approximate gas accretion onto a realistic black hole, and may also prevent the high-density central region from driving runaway local velocities or infinite Mach numbers that break the calculation.
+- Test the smooth absorbing sink near the potential center. Treat `r_sink` as an accretion-like inner region, keep `r_sink < r_cut` for force analysis, and compare density, pressure, local Mach number, and drag against no-sink runs.
+- Measure sensitivity to `SINK_RADIUS`, `SINK_TIMESCALE`, and `SINK_TAPER_POWER`, since sink effects can propagate into the downstream wake.
 - Investigate whether PLUTO AMR/Chombo or a static locally refined grid can resolve the near-perturber region without increasing the full 3D domain by the cube of the target resolution.
 - Treat this as a physics and numerics check, not as a script-layout issue.
 

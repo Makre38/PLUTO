@@ -17,8 +17,7 @@ cs0="${CS0:-1.0}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
 sink_radius="${SINK_RADIUS:-0.0}"
 sink_timescale="${SINK_TIMESCALE:-0.0}"
-sink_rho_floor="${SINK_RHO_FLOOR:-1.0e-8}"
-sink_velocity_factor="${SINK_VELOCITY_FACTOR:-1.0}"
+sink_taper_power="${SINK_TAPER_POWER:-2.0}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
 mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
@@ -44,6 +43,7 @@ eval "$(awk -v mach="${mach}" \
               -v rsoft_frac="${rsoft_frac}" \
               -v sink_radius="${sink_radius}" \
               -v sink_timescale="${sink_timescale}" \
+              -v sink_taper_power="${sink_taper_power}" \
               -v margin_up="${margin_up}" \
               -v margin_down="${margin_down}" \
               -v margin_y="${margin_y}" \
@@ -81,7 +81,7 @@ BEGIN {
   hard = (ncell > hard_cells) ? 1 : 0
   case_name = sprintf("mach%.3f_mp%.3f_ll%.3f_rbhl%.1f_3d", mach, mp, log_lambda_max, cells_per_rbhl)
   if (sink_radius > 0.0) {
-    case_name = sprintf("%s_sink%.3g_tau%.3g", case_name, sink_radius, sink_timescale)
+    case_name = sprintf("%s_sink%.3g_tau%.3g_taper%.3g", case_name, sink_radius, sink_timescale, sink_taper_power)
   }
 
   printf("rbhl=%.17g\n", rbhl)
@@ -191,8 +191,7 @@ X2P                         0.0
 X3P                         0.0
 SINK_RADIUS                 ${sink_radius}
 SINK_TIMESCALE              ${sink_timescale}
-SINK_RHO_FLOOR              ${sink_rho_floor}
-SINK_VELOCITY_FACTOR        ${sink_velocity_factor}
+SINK_TAPER_POWER            ${sink_taper_power}
 CS_ALERT_THRESHOLD          ${cs_alert_threshold}
 CS_ALERT_EVERY_STEPS        ${cs_alert_every_steps}
 MACH_ALERT_THRESHOLD        ${mach_alert_threshold}
@@ -209,8 +208,7 @@ vinf = ${vinf}
 rsoft = ${rsoft}
 sink_radius = ${sink_radius}
 sink_timescale = ${sink_timescale}
-sink_rho_floor = ${sink_rho_floor}
-sink_velocity_factor = ${sink_velocity_factor}
+sink_taper_power = ${sink_taper_power}
 cs_alert_threshold = ${cs_alert_threshold}
 cs_alert_every_steps = ${cs_alert_every_steps}
 mach_alert_threshold = ${mach_alert_threshold}

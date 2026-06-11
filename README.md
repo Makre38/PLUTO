@@ -78,17 +78,17 @@ persists. `UserDefBoundary(..., side == 0)` calls are recorded in
 `logs/sink_boundary_3d.rankNNNN.dat`, including the number of cells inside the
 configured sink radius on that rank.
 
-A central sink-like sponge can be enabled for 3D cases by setting
-`SINK_RADIUS`. Inside that radius, density is relaxed toward
-`SINK_RHO_FLOOR`, velocity toward `SINK_VELOCITY_FACTOR` times the ambient
-inflow, and pressure toward the local nearly-isothermal value over
-`SINK_TIMESCALE`. The default `SINK_RADIUS=0.0` disables the sink, and the
-default `SINK_VELOCITY_FACTOR=1.0` preserves the original ambient-inflow sink
-velocity. Use `SINK_VELOCITY_FACTOR=0.0` to relax the sink velocity toward rest.
+A central smooth absorbing sink can be enabled for 3D cases by setting
+`SINK_RADIUS`. Inside that radius, density and pressure are relaxed toward the
+initial ambient values, and all velocity components are relaxed toward zero.
+The relaxation strength is
+`alpha = (1 - exp(-dt/SINK_TIMESCALE)) * max(0, 1 - r/SINK_RADIUS)^SINK_TAPER_POWER`,
+so the sink tapers smoothly to zero at `SINK_RADIUS`. The default
+`SINK_RADIUS=0.0` disables the sink, and the default `SINK_TAPER_POWER=2.0`
+uses a quadratic radial taper.
 
 ```bash
-SINK_RADIUS=0.05 SINK_TIMESCALE=0.01 SINK_RHO_FLOOR=1.0e-6 \
-SINK_VELOCITY_FACTOR=0.0 \
+SINK_RADIUS=0.05 SINK_TIMESCALE=0.01 SINK_TAPER_POWER=2.0 \
   MACH=0.5 MP=1.0 LOG_LAMBDA_MAX=1.0 CELLS_PER_RBHL=2 N_OUTPUT=10 \
   ./scripts/prepare_one_case_3d.sh
 ```
