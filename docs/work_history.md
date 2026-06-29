@@ -1,5 +1,14 @@
 # Work History
 
+## 2026-06-11 21:07 JST - Session Handoff
+
+- Purpose: close the smooth absorbing sink implementation session and record the follow-up PLUTO energy/EOS interpretation before resuming production tests.
+- Changes made: implemented and committed the smooth absorbing 3D sink as `e8bd709` (`吸収境界を実装`), leaving `main`, `origin/main`, and `dev/smooth-absorbing-sink` at the same commit. The sink now relaxes density and pressure toward the initial ambient state and all velocity components toward zero with `alpha = (1 - exp(-dt/SINK_TIMESCALE)) * max(0, 1 - r/SINK_RADIUS)^SINK_TAPER_POWER`; `SINK_RHO_FLOOR` and `SINK_VELOCITY_FACTOR` were removed from active 3D generation and `SINK_TAPER_POWER` was added. After implementation, inspected the local PLUTO source to clarify that HD + `EOS = IDEAL` evolves total energy and recovers pressure from `p = (gamma - 1) * (E - kinetic)`.
+- Verification: the smooth sink implementation was previously verified with shell syntax checks, `git diff --check`, generated `/tmp` 3D cases, serial PLUTO compile, `./pluto -maxsteps 1`, and sink-boundary log inspection showing nonzero sink cells and reduced speed for a large-radius smoke test. For the energy/EOS question, inspected `/home/nkoba/PLUTO/Src/HD/mappers.c`, `/home/nkoba/PLUTO/Src/Time_Stepping/rk_step.c`, `/home/nkoba/PLUTO/Src/EOS/Ideal/eos.c`, and `/home/nkoba/PLUTO/Src/HD/mod_defs.h`.
+- Not verified: no MPI compile/runtime test was run locally; no production 3D failing case has yet been rerun with the smooth sink; no force or wake sensitivity study has been performed.
+- Incomplete or untouched: worktree is clean at the time of this handoff. The pressure/internal-energy alert remains unimplemented. The sink is still a primitive-variable relaxation applied through the internal-boundary path, not a conservative accretion/source-term formulation.
+- Next steps: run matched no-sink and smooth-sink cases with `r_sink < r_cut`, inspect density, pressure, speed, local Mach, and drag, then vary `SINK_RADIUS`, `SINK_TIMESCALE`, and `SINK_TAPER_POWER`. If pressure/internal-energy failure remains ambiguous, add a dedicated alert for `E - kinetic` or pressure before relying on sink-enabled force results.
+
 ## 2026-06-11 14:41 JST - Smooth Absorbing Sink
 
 - Purpose: replace the discontinuous top-hat 3D sink with a smoother absorbing inner region before the next central-failure tests.

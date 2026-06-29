@@ -8,6 +8,7 @@ const OSTRIKER_LOG_LAMBDA = 2.0
 const OSTRIKER_MACH_RANGES = [(0.0, 0.8), (1.2, 3.0)]
 const OSTRIKER_SAMPLES_PER_RANGE = 100
 const FORCE_MODES = ("auto", "axisym", "2d", "3d")
+const FLOW_DIR_OPTIONS = ("auto", "+x", "-x")
 
 struct SnapshotMeta
     index::Int
@@ -164,11 +165,13 @@ function get_run_params(run_dir::AbstractString)
 end
 
 function compute_force_2d(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                          mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
+                          mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64,
+                          x_region::AbstractString = "all")
     fx = 0.0
     fy = 0.0
     for j in eachindex(y), i in eachindex(x)
         rx = x[i] - xp
+        include_x_region(rx, x_region) || continue
         ry = y[j] - yp
         r2 = rx * rx + ry * ry
         r = sqrt(r2)
@@ -184,11 +187,13 @@ function compute_force_2d(rho::AbstractMatrix, x::AbstractVector, y::AbstractVec
 end
 
 function compute_force_axisym(rho::AbstractMatrix, x::AbstractVector, y::AbstractVector, dx::AbstractVector, dy::AbstractVector;
-                              mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64)
+                              mp::Float64, rho0::Float64, xp::Float64, yp::Float64, rcut::Float64,
+                              x_region::AbstractString = "all")
     fx = 0.0
     fy = 0.0
     for j in eachindex(y), i in eachindex(x)
         rx = x[i] - xp
+        include_x_region(rx, x_region) || continue
         ry = y[j] - yp
         r2 = rx * rx + ry * ry
         r = sqrt(r2)
@@ -207,12 +212,14 @@ function compute_force_3d(rho::AbstractArray{Float64, 3},
                           x::AbstractVector, y::AbstractVector, z::AbstractVector,
                           dx::AbstractVector, dy::AbstractVector, dz::AbstractVector;
                           mp::Float64, rho0::Float64,
-                          xp::Float64, yp::Float64, zp::Float64, rcut::Float64)
+                          xp::Float64, yp::Float64, zp::Float64, rcut::Float64,
+                          x_region::AbstractString = "all")
     fx = 0.0
     fy = 0.0
     fz = 0.0
     for k in eachindex(z), j in eachindex(y), i in eachindex(x)
         rx = x[i] - xp
+        include_x_region(rx, x_region) || continue
         ry = y[j] - yp
         rz = z[k] - zp
         r2 = rx * rx + ry * ry + rz * rz
@@ -227,6 +234,13 @@ function compute_force_3d(rho::AbstractArray{Float64, 3},
         fz += mp * delta_mass * rz * inv_r3
     end
     return fx, fy, fz
+end
+
+function include_x_region(rx::Float64, x_region::AbstractString)
+    x_region == "all" && return true
+    x_region == "x_lt_xp" && return rx < 0.0
+    x_region == "x_gt_xp" && return rx > 0.0
+    error("Unsupported x-region: $(x_region)")
 end
 
 function nearest_snapshot(metas::Vector{SnapshotMeta}, target_log_lambda::Float64, rbhl::Float64, cs0::Float64)
@@ -266,7 +280,29 @@ function resolve_force_mode(force_mode::AbstractString, dimension::Int)
     return force_mode
 end
 
-function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; dimension_option::AbstractString = "auto", force_mode::AbstractString = "auto")
+function compute_force_for_mode(mode::AbstractString, rho, x, y, z, dx, dy, dz, params; x_region::AbstractString = "all")
+    if mode == "3d"
+        return compute_force_3d(rho, x, y, z, dx, dy, dz;
+                                mp = params.mp, rho0 = params.rho0,
+                                xp = params.x1p, yp = params.x2p, zp = params.x3p,
+                                rcut = params.rbhl, x_region = x_region)
+    elseif mode == "axisym"
+        fx, fy = compute_force_axisym(@view(rho[:, :, 1]), x, y, dx, dy;
+                                      mp = params.mp, rho0 = params.rho0,
+                                      xp = params.x1p, yp = params.x2p,
+                                      rcut = params.rbhl, x_region = x_region)
+        return fx, fy, NaN
+    elseif mode == "2d"
+        fx, fy = compute_force_2d(@view(rho[:, :, 1]), x, y, dx, dy;
+                                  mp = params.mp, rho0 = params.rho0,
+                                  xp = params.x1p, yp = params.x2p,
+                                  rcut = params.rbhl, x_region = x_region)
+        return fx, fy, NaN
+    end
+    error("Unsupported resolved force mode: $(mode)")
+end
+
+function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; dimension_option::AbstractString = "auto", force_mode::AbstractString = "auto", split_x::Bool = false)
     params = get_run_params(run_dir)
     summary_path = joinpath(run_dir, "run_summary.txt")
     summary = isfile(summary_path) ? parse_key_value_file(summary_path) : Dict{String, String}()
@@ -291,26 +327,9 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; 
         error("Requested 3D force calculation, but grid has nz = $(nz)")
     end
 
-    if mode == "3d"
-        fx, fy, fz = compute_force_3d(rho, x, y, z, dx, dy, dz;
-                                      mp = params.mp, rho0 = params.rho0,
-                                      xp = params.x1p, yp = params.x2p, zp = params.x3p,
-                                      rcut = params.rbhl)
-    elseif mode == "axisym"
-        fx, fy = compute_force_axisym(@view(rho[:, :, 1]), x, y, dx, dy;
-                                      mp = params.mp, rho0 = params.rho0,
-                                      xp = params.x1p, yp = params.x2p,
-                                      rcut = params.rbhl)
-        fz = NaN
-    elseif mode == "2d"
-        fx, fy = compute_force_2d(@view(rho[:, :, 1]), x, y, dx, dy;
-                                  mp = params.mp, rho0 = params.rho0,
-                                  xp = params.x1p, yp = params.x2p,
-                                  rcut = params.rbhl)
-        fz = NaN
-    else
-        error("Unsupported resolved force mode: $(mode)")
-    end
+    fx, fy, fz = compute_force_for_mode(mode, rho, x, y, z, dx, dy, dz, params)
+    fx_lt, fy_lt, fz_lt = split_x ? compute_force_for_mode(mode, rho, x, y, z, dx, dy, dz, params; x_region = "x_lt_xp") : (NaN, NaN, NaN)
+    fx_gt, fy_gt, fz_gt = split_x ? compute_force_for_mode(mode, rho, x, y, z, dx, dy, dz, params; x_region = "x_gt_xp") : (NaN, NaN, NaN)
 
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
     fdf_raw = -fx
@@ -326,6 +345,16 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; 
         fz = fz,
         fdf_raw = fdf_raw,
         fdf_norm = fdf_raw / norm_factor,
+        fx_lt_xp = fx_lt,
+        fy_lt_xp = fy_lt,
+        fz_lt_xp = fz_lt,
+        fdf_lt_xp_raw = -fx_lt,
+        fdf_lt_xp_norm = -fx_lt / norm_factor,
+        fx_gt_xp = fx_gt,
+        fy_gt_xp = fy_gt,
+        fz_gt_xp = fz_gt,
+        fdf_gt_xp_raw = -fx_gt,
+        fdf_gt_xp_norm = -fx_gt / norm_factor,
         norm_factor = norm_factor,
         actual_log_lambda = log_lambda,
         snapshot = meta.index,
@@ -339,14 +368,30 @@ function sanitize_log_lambda_label(value::Float64)
     return replace(text, "." => "p")
 end
 
-function write_results_table(table_path::AbstractString, results)
+function write_results_table(table_path::AbstractString, results; split_x::Bool = false)
     open(table_path, "w") do io
-        println(io, "# Mach dimension force_mode target_log_lambda actual_log_lambda snapshot Fx Fy Fz Fdf_raw Fdf_norm norm_factor run_dir")
+        if split_x
+            println(io, "# Mach dimension force_mode target_log_lambda actual_log_lambda snapshot Fx Fy Fz Fdf_raw Fdf_norm Fx_x_lt_xp Fy_x_lt_xp Fz_x_lt_xp Fdf_x_lt_xp_raw Fdf_x_lt_xp_norm Fx_x_gt_xp Fy_x_gt_xp Fz_x_gt_xp Fdf_x_gt_xp_raw Fdf_x_gt_xp_norm norm_factor run_dir")
+        else
+            println(io, "# Mach dimension force_mode target_log_lambda actual_log_lambda snapshot Fx Fy Fz Fdf_raw Fdf_norm norm_factor run_dir")
+        end
         for r in results
-            @printf(io, "%.8f %d %s %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %.12e %s\n",
-                    r.mach, r.dimension, r.force_mode, r.target_log_lambda,
-                    r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fz,
-                    r.fdf_raw, r.fdf_norm, r.norm_factor, r.run_dir)
+            if split_x
+                @printf(io, "%.8f %d %s %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %.12e %s\n",
+                        r.mach, r.dimension, r.force_mode, r.target_log_lambda,
+                        r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fz,
+                        r.fdf_raw, r.fdf_norm,
+                        r.fx_lt_xp, r.fy_lt_xp, r.fz_lt_xp,
+                        r.fdf_lt_xp_raw, r.fdf_lt_xp_norm,
+                        r.fx_gt_xp, r.fy_gt_xp, r.fz_gt_xp,
+                        r.fdf_gt_xp_raw, r.fdf_gt_xp_norm,
+                        r.norm_factor, r.run_dir)
+            else
+                @printf(io, "%.8f %d %s %.8f %.8f %d %.12e %.12e %.12e %.12e %.12e %.12e %s\n",
+                        r.mach, r.dimension, r.force_mode, r.target_log_lambda,
+                        r.actual_log_lambda, r.snapshot, r.fx, r.fy, r.fz,
+                        r.fdf_raw, r.fdf_norm, r.norm_factor, r.run_dir)
+            end
         end
     end
 end
@@ -367,6 +412,15 @@ function plot_ostriker_model!(plt)
     end
 end
 
+function split_region_labels(flow_dir::AbstractString)
+    if flow_dir == "+x"
+        return ("upstream (x < x_p)", "downstream (x > x_p)")
+    elseif flow_dir == "-x"
+        return ("downstream (x < x_p)", "upstream (x > x_p)")
+    end
+    return ("x < x_p", "x > x_p")
+end
+
 function parse_dimension_option(value::AbstractString)
     value in ("auto", "2", "3") || error("Unsupported --dimension value: $(value). Use auto, 2, or 3.")
     return value
@@ -377,11 +431,18 @@ function parse_force_mode_option(value::AbstractString)
     return value
 end
 
+function parse_flow_dir_option(value::AbstractString)
+    value in FLOW_DIR_OPTIONS || error("Unsupported --flow-dir value: $(value). Use auto, +x, or -x.")
+    return value
+end
+
 function parse_cli_targets_and_prefix(runs_dir::AbstractString, args::Vector{String})
     target_log_lambdas = DEFAULT_TARGET_LOG_LAMBDAS
     output_prefix = joinpath(runs_dir, "force_summary")
     dimension = "auto"
     force_mode = "auto"
+    split_x = false
+    flow_dir = "auto"
     positionals = String[]
 
     i = 1
@@ -400,6 +461,16 @@ function parse_cli_targets_and_prefix(runs_dir::AbstractString, args::Vector{Str
             i += 2
         elseif startswith(arg, "--force-mode=")
             force_mode = parse_force_mode_option(split(arg, "=", limit = 2)[2])
+            i += 1
+        elseif arg == "--split-x"
+            split_x = true
+            i += 1
+        elseif arg == "--flow-dir"
+            i == length(args) && error("Missing value after --flow-dir")
+            flow_dir = parse_flow_dir_option(args[i + 1])
+            i += 2
+        elseif startswith(arg, "--flow-dir=")
+            flow_dir = parse_flow_dir_option(split(arg, "=", limit = 2)[2])
             i += 1
         elseif startswith(arg, "--")
             error("Unknown option: $(arg)")
@@ -422,7 +493,7 @@ function parse_cli_targets_and_prefix(runs_dir::AbstractString, args::Vector{Str
     end
     length(positionals) <= 2 || error("Too many positional arguments: $(join(positionals, " "))")
 
-    return target_log_lambdas, output_prefix, dimension, force_mode
+    return target_log_lambdas, output_prefix, dimension, force_mode, split_x, flow_dir
 end
 
 function list_run_dirs(runs_dir::AbstractString)
@@ -435,11 +506,11 @@ end
 
 function main()
     if isempty(ARGS)
-        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA|OUTPUT_PREFIX] [OUTPUT_PREFIX] [--dimension auto|2|3] [--force-mode auto|axisym|2d|3d]")
+        error("Usage: julia sweep_force_plot.jl RUNS_DIR [TARGET_LOG_LAMBDA|OUTPUT_PREFIX] [OUTPUT_PREFIX] [--dimension auto|2|3] [--force-mode auto|axisym|2d|3d] [--split-x] [--flow-dir auto|+x|-x]")
     end
 
     runs_dir = abspath(ARGS[1])
-    target_log_lambdas, output_prefix, dimension_option, force_mode = parse_cli_targets_and_prefix(runs_dir, ARGS[2:end])
+    target_log_lambdas, output_prefix, dimension_option, force_mode, split_x, flow_dir = parse_cli_targets_and_prefix(runs_dir, ARGS[2:end])
 
     run_dirs = list_run_dirs(runs_dir)
     isempty(run_dirs) && error("No run directories found in $(runs_dir)")
@@ -448,7 +519,7 @@ function main()
     for target_log_lambda in target_log_lambdas
         for run_dir in run_dirs
             try
-                push!(results, compute_run_force(run_dir, target_log_lambda; dimension_option = dimension_option, force_mode = force_mode))
+                push!(results, compute_run_force(run_dir, target_log_lambda; dimension_option = dimension_option, force_mode = force_mode, split_x = split_x))
             catch err
                 @warn "Skipping run" run_dir target_log_lambda err
             end
@@ -463,7 +534,7 @@ function main()
         isempty(per_target) && continue
         suffix = sanitize_log_lambda_label(target_log_lambda)
         table_path = output_prefix * "_loglambda_" * suffix * ".dat"
-        write_results_table(table_path, per_target)
+        write_results_table(table_path, per_target; split_x = split_x)
         println("Wrote $(table_path)")
     end
 
@@ -472,6 +543,7 @@ function main()
         ylabel = latexstring("F_{\\rm df}/\\left(4\\pi \\rho_0 (G M_p)^2 / c_s^2\\right)"),
         title = "Fdf vs Mach",
     )
+    lt_label, gt_label = split_region_labels(flow_dir)
     for target_log_lambda in target_log_lambdas
         per_target = sort([r for r in results if r.target_log_lambda == target_log_lambda], by = r -> r.mach)
         isempty(per_target) && continue
@@ -482,6 +554,24 @@ function main()
             marker = :circle,
             label = latexstring(@sprintf("\\log \\Lambda \\approx %.3f", target_log_lambda)),
         )
+        if split_x
+            plot!(
+                plt,
+                [r.mach for r in per_target],
+                [r.fdf_lt_xp_norm for r in per_target],
+                marker = :utriangle,
+                linestyle = :dash,
+                label = @sprintf("%s, log Lambda ~= %.3f", lt_label, target_log_lambda),
+            )
+            plot!(
+                plt,
+                [r.mach for r in per_target],
+                [r.fdf_gt_xp_norm for r in per_target],
+                marker = :dtriangle,
+                linestyle = :dot,
+                label = @sprintf("%s, log Lambda ~= %.3f", gt_label, target_log_lambda),
+            )
+        end
     end
     if PLOT_OSTRIKER_MODEL
         plot_ostriker_model!(plt)
