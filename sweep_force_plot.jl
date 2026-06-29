@@ -332,7 +332,7 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; 
     fx_gt, fy_gt, fz_gt = split_x ? compute_force_for_mode(mode, rho, x, y, z, dx, dy, dz, params; x_region = "x_gt_xp") : (NaN, NaN, NaN)
 
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
-    fdf_raw = -fx
+    fdf_raw = fx
     norm_factor = ostriker_normalization(params.rho0, params.mp, params.cs0)
 
     return (
@@ -348,13 +348,13 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; 
         fx_lt_xp = fx_lt,
         fy_lt_xp = fy_lt,
         fz_lt_xp = fz_lt,
-        fdf_lt_xp_raw = -fx_lt,
-        fdf_lt_xp_norm = -fx_lt / norm_factor,
+        fdf_lt_xp_raw = fx_lt,
+        fdf_lt_xp_norm = fx_lt / norm_factor,
         fx_gt_xp = fx_gt,
         fy_gt_xp = fy_gt,
         fz_gt_xp = fz_gt,
-        fdf_gt_xp_raw = -fx_gt,
-        fdf_gt_xp_norm = -fx_gt / norm_factor,
+        fdf_gt_xp_raw = fx_gt,
+        fdf_gt_xp_norm = fx_gt / norm_factor,
         norm_factor = norm_factor,
         actual_log_lambda = log_lambda,
         snapshot = meta.index,
