@@ -1,5 +1,14 @@
 # Work History
 
+## 2026-06-29 17:52 JST - Session Handoff
+
+- Purpose: diagnose why `sweep_force_plot.jl` was plotting negative drag values for the 3D smooth-sink sweep, and determine whether the sign came from a real upstream force or from the plotting convention.
+- Changes made: added `--split-x` support to `sweep_force_plot.jl` so the sweep table and plot can show separate contributions from `x < x_p` and `x > x_p`; added `--flow-dir auto|+x|-x` to label those split curves as geometric regions or upstream/downstream regions without changing the stored column meanings. After inspecting `./runs_fig/sft25_sink25_tau0.01/dimension_loglambda_*.dat`, changed the sweep plotted drag convention from `Fdf = -Fx` to `Fdf = Fx`, including the split-region `Fdf` columns.
+- Verification: ran `git diff --check`; loaded `sweep_force_plot.jl` in Julia with `Plots` and `LaTeXStrings` stubbed out because the local Julia environment lacks `LaTeXStrings`; checked CLI parsing for `--split-x` and `--flow-dir`; tested a synthetic 2D split case and confirmed `Fx_all = Fx_x_lt_xp + Fx_x_gt_xp`; checked synthetic split table output after the sign change. Inspected the imported `dimension_loglambda_*.dat` files and found `x < x_p` had positive old-convention `Fdf` in all points, while `x > x_p` dominated with negative old-convention `Fdf`, indicating the previous `Fdf = -Fx` convention was inconsistent with the current `+x` inflow setup.
+- Not verified: full PNG generation was not run locally because `LaTeXStrings` is missing; production sweep plots have not yet been regenerated after the `Fdf = Fx` change; `force_from_run.jl`, `force_from_run_3d.jl`, and `plot_3d_diagnostics.jl` still contain the older `Fdf = -Fx` convention or labels and were not changed in this step.
+- Incomplete or untouched: project docs such as `docs/current_status.md` and `docs/decisions.md` still mention `Fdf = -Fx`; update them after deciding whether the new `Fdf = Fx` convention should become the durable project-wide convention. The worktree has uncommitted edits to `sweep_force_plot.jl` and this work-history entry.
+- Next steps: regenerate the sweep outputs for the sink sweep with `--split-x --flow-dir +x`, confirm the plotted total drag is now positive for the expected wake direction, then propagate the sign convention consistently to one-case force scripts, diagnostic labels, and durable docs if the result is accepted.
+
 ## 2026-06-11 21:07 JST - Session Handoff
 
 - Purpose: close the smooth absorbing sink implementation session and record the follow-up PLUTO energy/EOS interpretation before resuming production tests.
