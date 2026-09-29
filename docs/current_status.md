@@ -1,12 +1,29 @@
 # Current Status
 
-Last updated: 2026-09-29 (drag sign convention)
+Last updated: 2026-09-29 (project aim and drag sign convention)
 
 ## Project Aim
 
-This repository prepares and runs PLUTO hydrodynamics simulations for dynamical friction by a softened point-mass potential in uniform gas, then post-processes PLUTO output in Julia.
+The final goal is to calculate the gravitational force exerted by gas on a
+softened point mass in a flow whose speed varies in a direction perpendicular
+to the flow. The quantities of interest are both the flow-direction dynamical
+friction (DF) and the gravitational force component along the transverse
+velocity-gradient direction. Simulations use PLUTO, with force analysis in Julia.
 
-The intended physical comparison is motivated by Ostriker (1999). The 2D workflow remains useful for setup and debugging, but the main quantitative comparison should be treated as a 3D problem.
+For example, with flow along `+x` and its speed varying with `y`, the background
+velocity is `v_gas = v_x(y) e_x`. The target force components on the perturber
+are `Fx` (DF, positive along the relative background flow) and `Fy` (the signed
+transverse gravitational force). The velocity profile, including whether it
+is linear, and its gradient strength remain to be specified.
+
+The current stage is validation with uniform background velocity and density:
+compare the simulated DF against analytical calculations motivated by
+Ostriker (1999), and assess numerical reliability before introducing the
+transverse velocity gradient. Uniform-flow comparison is therefore a baseline
+for the final study. The velocity-gradient flow is not yet implemented.
+
+The 2D workflow remains useful for setup and debugging, but the main
+quantitative comparison and final study should be treated as 3D problems.
 
 ## Implemented Workflows
 

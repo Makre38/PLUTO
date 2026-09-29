@@ -349,3 +349,11 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Not verified: full sweep PNG generation remains unverified because `LaTeXStrings` is unavailable in the local Julia environment; production outputs have not been regenerated. No PLUTO simulation or MPI run was needed for this post-processing change.
 - Incomplete or untouched: changes are uncommitted on the new branch. Sink physics, force integration kernels, inner cutoffs, and historical log entries are unchanged. Old outputs retain their original signs.
 - Next steps: review the diff and regenerate desired production outputs with the unified convention. Investigate sink effects on density and momentum separately.
+
+## 2026-09-29 - Final Research Goal Clarification
+
+- Purpose: record the user-confirmed final goal beyond the current uniform-flow DF comparison.
+- Changes made: updated `docs/current_status.md` to identify uniform-velocity, uniform-density flow and analytical DF comparison as the current validation stage. Documented the final goal of introducing a velocity gradient perpendicular to the flow and calculating both flow-direction DF and the gravitational force along the gradient direction. Added the research stages to `docs/next_actions.md`, using `v_gas = v_x(y) e_x` and force components `Fx`, `Fy` as an example without fixing the velocity profile.
+- Verification: reviewed the documentation against the confirmed scope and ran `git diff --check`. No code tests or simulations were run for this documentation-only update.
+- Incomplete or untouched: the velocity-gradient flow remains unimplemented; its profile and strength remain undecided. This documentation update is uncommitted on `fix/fdf-sign-convention`; the preceding sign-convention changes are committed as `dcb8070`.
+- Next steps: continue uniform-flow validation and assess sink sensitivity before specifying and implementing the velocity-gradient cases.

@@ -1,6 +1,26 @@
 # Next Actions
 
-Last organized: 2026-06-08
+Last updated: 2026-09-29 (research stages)
+
+## Research Stages Toward The Final Goal
+
+The final goal is to measure DF and the transverse gravitational force on the
+perturber in a flow with a velocity gradient perpendicular to the flow direction.
+For a background velocity `v_gas = v_x(y) e_x`, these are `Fx` and `Fy`.
+
+1. Validate the current uniform-velocity, uniform-density baseline against
+   analytical DF calculations. Assess resolution, inner-cutoff, and sink
+   sensitivity, including the existing central numerical instability.
+2. Specify the transverse velocity profile and gradient strength, then extend
+   the initial and inflow conditions and record those parameters in each case.
+   The exact profile is not yet decided; a linear profile is not a requirement.
+3. Calculate and compare flow-direction DF and the signed gradient-direction
+   gravitational force across velocity-gradient cases. Use the uniform-flow
+   case as the zero-gradient reference, and check the numerical sensitivity
+   of both force components.
+
+The velocity-gradient workflow is future work. The tasks below support the
+current baseline-validation stage.
 
 ## Near-Term Implementation
 
