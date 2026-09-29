@@ -1,6 +1,6 @@
 # Decisions
 
-Last organized: 2026-05-07
+Last updated: 2026-09-29 (drag sign convention)
 
 ## Physical Setup
 
@@ -27,7 +27,15 @@ Last organized: 2026-05-07
 - Keep force calculation in Julia rather than PLUTO so diagnostics can be recomputed without rerunning simulations.
 - Use `log_Lambda = ln(cs t / r_BHL)` as the main time-like comparison variable.
 - Select snapshots nearest to requested `log_Lambda` values during post-processing.
-- Use `Fdf = -Fx` for plotted drag.
+- Define positive drag as force on the perturber along the ambient gas velocity
+  relative to it: `Fdf = F_perturber dot (u_rel / |u_rel|)`, where
+  `u_rel = v_gas - v_perturber` is nonzero.
+- Use `Fdf = Fx` for the configured `+x` ambient flow in one-case analysis,
+  sweep analysis, and diagnostic plots (`dfdf = dfx`). `Fx` is the gravitational
+  force from the gas density perturbation on the perturber.
+- Sweep `--flow-dir` is a region-label option, not a sign-conversion option.
+  Reversed ambient flow would require `Fdf = -Fx` instead.
+- Regenerate outputs made with the old `Fdf = -Fx` convention before comparison.
 
 ## Force Calculation
 
@@ -54,4 +62,3 @@ Last organized: 2026-05-07
   - `prepare_*` generates case files and directories
   - `run_*` executes prepared cases locally
   - `submit_*` submits prepared cases to Slurm
-

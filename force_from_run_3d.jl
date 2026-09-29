@@ -1,5 +1,8 @@
 using Printf
 
+# Fx is the force on the perturber. For the configured +x ambient flow,
+# positive drag acts along the gas velocity relative to the perturber: Fdf = Fx.
+
 struct SnapshotMeta
     index::Int
     time::Float64
@@ -175,7 +178,7 @@ function main()
     @printf("# log_lambda = %.8f\n", log_lambda)
     @printf("# rcut = %.8e\n", rcut)
     @printf("Fx = %.12e\n", fx)
-    @printf("Fdf = %.12e\n", -fx)
+    @printf("Fdf = %.12e\n", fx)
 end
 
 main()

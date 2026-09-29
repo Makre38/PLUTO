@@ -192,6 +192,28 @@ writes an HTML player and PNG frames by default. Use `--stride N` and
 `rcut` radius overlays are hidden by default; add `--show-overlays` to draw
 them.
 
+## Drag sign convention
+
+`Fx` is the x-component of the gravitational force exerted by the gas density
+perturbation on the perturber. Positive drag means that this force acts along
+the ambient gas velocity relative to the perturber, reducing their relative
+motion. With `u_rel = v_gas - v_perturber`, the general definition is
+`Fdf = F_perturber dot (u_rel / |u_rel|)` for nonzero ambient relative velocity.
+
+The current setup has a stationary perturber and ambient flow along `+x`
+(`vx = Mach * cs0` for positive Mach), so all force analysis uses `Fdf = Fx`.
+An excess of gas on the downstream (`x > x_p`) side contributes positively;
+an excess on the upstream (`x < x_p`) side contributes negatively. The
+diagnostic quantity `dfdf` consequently equals `dfx`.
+
+In sweep plots, `--flow-dir` controls upstream/downstream labels only; it does
+not change the sign of `Fdf`. A reversed ambient flow would require projecting
+the force along that reversed direction (`Fdf = -Fx` for `-x` flow).
+
+Older one-case outputs and `dfdf` diagnostic plots used `Fdf = -Fx`; regenerate
+them before comparing with the current convention. Sweep outputs generated
+before the June 29, 2026 sign correction also used the older convention.
+
 ## Notes
 
 - `runs/` is treated as generated output and is ignored by Git.

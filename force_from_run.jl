@@ -1,5 +1,8 @@
 using Printf
 
+# Fx is the force on the perturber. For the configured +x ambient flow,
+# positive drag acts along the gas velocity relative to the perturber: Fdf = Fx.
+
 struct SnapshotMeta
     index::Int
     time::Float64
@@ -260,13 +263,13 @@ function main()
         fx, fy = compute_force_2d(@view(rho[:, :, 1]), x, y, dx, dy; mp = mp, rho0 = rho0, xp = xp, yp = yp, rcut = rcut)
         @printf("Fx = %.12e\n", fx)
         @printf("Fy = %.12e\n", fy)
-        @printf("Fdf = %.12e\n", -fx)
+        @printf("Fdf = %.12e\n", fx)
     elseif dimension == 3
         fx, fy, fz = compute_force_3d(rho, x, y, z, dx, dy, dz; mp = mp, rho0 = rho0, xp = xp, yp = yp, zp = zp, rcut = rcut)
         @printf("Fx = %.12e\n", fx)
         @printf("Fy = %.12e\n", fy)
         @printf("Fz = %.12e\n", fz)
-        @printf("Fdf = %.12e\n", -fx)
+        @printf("Fdf = %.12e\n", fx)
     else
         error("Unsupported dimension: $(dimension)")
     end

@@ -332,6 +332,7 @@ function compute_run_force(run_dir::AbstractString, target_log_lambda::Float64; 
     fx_gt, fy_gt, fz_gt = split_x ? compute_force_for_mode(mode, rho, x, y, z, dx, dy, dz, params; x_region = "x_gt_xp") : (NaN, NaN, NaN)
 
     log_lambda = log(meta.time * params.cs0 / params.rbhl)
+    # Force on the perturber projected along the configured +x ambient flow.
     fdf_raw = fx
     norm_factor = ostriker_normalization(params.rho0, params.mp, params.cs0)
 
@@ -413,6 +414,7 @@ function plot_ostriker_model!(plt)
 end
 
 function split_region_labels(flow_dir::AbstractString)
+    # This option changes region labels only; Fdf retains the +x-flow convention.
     if flow_dir == "+x"
         return ("upstream (x < x_p)", "downstream (x > x_p)")
     elseif flow_dir == "-x"

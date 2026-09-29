@@ -1,6 +1,6 @@
 # Current Status
 
-Last organized: 2026-06-08
+Last updated: 2026-09-29 (drag sign convention)
 
 ## Project Aim
 
@@ -35,8 +35,12 @@ The intended physical comparison is motivated by Ostriker (1999). The 2D workflo
 ## Current Analysis State
 
 - The drag sign convention is currently:
-  - `Fdf = -Fx`
-  - this makes drag positive when the gas force is in the expected backward direction, i.e. `Fx < 0`
+  - `Fdf = Fx` for the configured `+x` ambient flow
+  - `Fx` is the gravitational force on the perturber from the gas density perturbation
+  - positive drag acts along the ambient gas velocity relative to the perturber
+  - one-case analysis, sweep analysis, and diagnostic `dfdf = dfx` use the same convention
+  - `--flow-dir` in sweep analysis changes region labels only, not the force sign
+  - older one-case outputs and diagnostic plots need regeneration before comparison
 - `force_from_run.jl` supports:
   - `--dimension auto`
   - `--dimension 2`
@@ -56,6 +60,11 @@ The intended physical comparison is motivated by Ostriker (1999). The 2D workflo
 
 Verified locally:
 
+- On 2026-09-29, 97 synthetic-data assertions passed for the unified drag sign:
+  one-case CLI output, 2D/3D and axisymmetric sweep calculations, split tables,
+  normalization, and diagnostic force contributions. A synthetic `dfdf` PNG
+  was generated and visually checked for upstream-negative/downstream-positive
+  contributions and the `dFdf = dFx` label.
 - `force_from_run.jl` loaded successfully in Julia with the final `main()` call suppressed.
 - Synthetic 2D and 3D PLUTO-like output directories were generated under `/tmp`.
 - `force_from_run.jl` was tested on both synthetic 2D and synthetic 3D data.

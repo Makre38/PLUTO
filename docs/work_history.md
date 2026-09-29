@@ -339,3 +339,13 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Compare EOS choices.
 - Consider using the Julia REPL for repeated calls to `animate_density.jl` if compilation time becomes important.
 - Investigate whether small random perturbations can reduce realization-specific vortex-street imprint in high-Mach runs.
+
+## 2026-09-29 - Fdf Sign Convention Unification
+
+- Purpose: make drag positive when the force on the perturber points along the ambient gas velocity relative to it. For the configured positive-Mach, +x inflow, this means `Fdf = Fx`.
+- Changes made: created `fix/fdf-sign-convention`; changed both one-case force scripts to print `Fdf = Fx`; changed the 3D diagnostic `dfdf` values and label to `dFdf = dFx`; documented the convention in README, current status, and decisions. Sweep force values already used this convention; comments now clarify that `--flow-dir` changes region labels only.
+- Verification: `julia --startup-file=no /tmp/pluto_fdf_sign_check.jl` passed all 97 assertions using synthetic 2D/3D PLUTO output (downstream excess, upstream excess, mixed excesses, and uniform density). Checked actual one-case CLI output, sweep 2D/3D and axisymmetric calculations, normalized values, split contributions and generated tables, and agreement between summed diagnostic contributions and the force integral. Plotting imports and entry points were excluded from the numerical module checks. `git diff --check` passed.
+- Plot verification: ran `plot_3d_diagnostics.jl` with `--quantity dfdf` on a synthetic 3D case using actual Plots (`GKSwstype=100`, `--compiled-modules=no`). Generated `/tmp/pluto_fdf_sign_fUsfuw/dfdf.png` and visually confirmed negative upstream and positive downstream contributions and the `dFdf = dFx per cell (+x flow)` label.
+- Not verified: full sweep PNG generation remains unverified because `LaTeXStrings` is unavailable in the local Julia environment; production outputs have not been regenerated. No PLUTO simulation or MPI run was needed for this post-processing change.
+- Incomplete or untouched: changes are uncommitted on the new branch. Sink physics, force integration kernels, inner cutoffs, and historical log entries are unchanged. Old outputs retain their original signs.
+- Next steps: review the diff and regenerate desired production outputs with the unified convention. Investigate sink effects on density and momentum separately.

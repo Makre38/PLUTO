@@ -174,7 +174,8 @@ function force_contribution(rho::Array{Float64, 3},
         elseif quantity == "dfy"
             values[i, j, k] = common * ry
         elseif quantity == "dfdf"
-            values[i, j, k] = -common * rx
+            # Positive drag is along the configured +x ambient flow.
+            values[i, j, k] = common * rx
         else
             error("Unsupported force quantity: $(quantity)")
         end
@@ -214,7 +215,7 @@ function quantity_label(quantity::AbstractString)
     quantity == "mach" && return "|v| / c_local"
     quantity == "dfx" && return "dFx per cell"
     quantity == "dfy" && return "dFy per cell"
-    quantity == "dfdf" && return "dFdf = -dFx per cell"
+    quantity == "dfdf" && return "dFdf = dFx per cell (+x flow)"
     error("Unsupported quantity: $(quantity)")
 end
 
