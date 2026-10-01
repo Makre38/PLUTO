@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-09-29 (project aim and drag sign convention)
+Last updated: 2026-10-01 (no-sink variable-softening benchmark)
 
 ## Project Aim
 
@@ -27,6 +27,15 @@ quantitative comparison and final study should be treated as 3D problems.
 
 ## Implemented Workflows
 
+- No-sink variable-softening benchmark (3D):
+  - `A_SOFT = r_B/r_soft` controls softening independently of Mach
+  - corrected arbitrary-`CS0` Bondi/BHL scales, derived-scale metadata and
+    resolution/boundary warnings in `prepare_one_case_3d.sh`
+  - matched cases with `SINK_RADIUS=0` via `prepare_softening_sweep_3d.sh`
+  - radial cumulative and shell forces for both point and softened kernels
+    via `force_radial_profile_3d.jl`
+  - existing PLUTO gravity, optional sink, and one-case force semantics preserved
+
 - 2D Cartesian PLUTO setup:
   - uniform inflow
   - softened point-mass gravity
@@ -50,6 +59,13 @@ quantitative comparison and final study should be treated as 3D problems.
   - `MPI_LAUNCHER` selects `mpirun` or `srun` for MPI execution after compilation
 
 ## Current Analysis State
+
+- The immediate benchmark now tests increased softening without a sink. The
+  user reports an artificial-looking downstream hole with the smooth sink;
+  the new benchmark instead models a non-accreting softened perturber.
+- Implementation and lightweight verification are complete; whether softening
+  stabilizes a production run and preserves converged outer wakes/DF is still
+  unverified. Softening is not identified with a force cutoff or a BH radius.
 
 - The drag sign convention is currently:
   - `Fdf = Fx` for the configured `+x` ambient flow
@@ -77,6 +93,17 @@ quantitative comparison and final study should be treated as 3D problems.
 
 Verified locally:
 
+- On 2026-10-01, case-generation regression tests covered legacy compatibility,
+  arbitrary `CS0`, all derived scales, softening conflicts, warning/cell limits,
+  case preservation, and matched no-sink sweeps. The default `CS0=1` generated
+  `pluto.ini` was byte-for-byte identical to the pre-change generator output.
+- Radial-force synthetic tests passed for uniform density, signed asymmetric
+  perturbations, exact cutoff boundaries, shell/cumulative consistency, both
+  kernels against direct integration, little/big endian multi-variable input,
+  the CLI, and agreement with the existing one-case point-force calculation.
+- An `A_SOFT=1`, `SINK_RADIUS=0` serial case compiled and ran three steps;
+  the radial diagnostic read both initial and positive-time PLUTO output.
+
 - On 2026-09-29, 97 synthetic-data assertions passed for the unified drag sign:
   one-case CLI output, 2D/3D and axisymmetric sweep calculations, split tables,
   normalization, and diagnostic force contributions. A synthetic `dfdf` PNG
@@ -97,6 +124,9 @@ Verified locally:
 
 Partially verified or not yet verified:
 
+- No production no-sink softening sweep, MPI verification, long-time stability
+  comparison, or wake/force convergence study has been performed for this task.
+
 - Full PNG generation from `sweep_force_plot.jl` was not verified locally because the local Julia environment lacks `Plots`.
 - Remote verification of updated 3D sweep plotting should be done after relevant jobs finish.
 - `animate_density.jl` still visualizes a 2D slice and is not yet a mature 3D visualization workflow.
@@ -106,6 +136,13 @@ Partially verified or not yet verified:
 - The smooth absorbing sink has only been locally smoke-tested; it has not yet been tested on a production 3D failure case or used for force interpretation.
 
 ## Known Issues And Risks
+
+- Older 3D runs and the unchanged 2D generator use a BHL formula assuming
+  `CS0=1`. Their non-unit-`CS0` metadata/domain/runtime must not be mixed silently
+  with newly generated matched cases.
+- Single-case and Mach-sweep generation retain different `GAMMA` defaults;
+  explicitly match gamma when comparing workflows. Large softening can exceed
+  the useful box size even when the cell-count limits are satisfied.
 
 - The physical choice of inner cutoff is still effectively `rcut = rbhl`; this is a provisional analysis choice, not a validated physical conclusion.
 - The 2D-to-3D axisymmetric reconstruction in sweep analysis is useful as a diagnostic but may not represent the physics assumed by Ostriker (1999).

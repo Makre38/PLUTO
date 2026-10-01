@@ -17,7 +17,25 @@ n_output="${N_OUTPUT:-80}"
 gamma="${GAMMA:-1.0001}"
 rho0="${RHO0:-1.0}"
 cs0="${CS0:-1.0}"
-rsoft_frac="${RSOFT_FRAC:-0.25}"
+# Preserve whether RSOFT_FRAC was explicitly supplied; do not manufacture a
+# conflict with A_SOFT by forwarding the legacy default.
+if [[ -v A_SOFT && -v RSOFT_FRAC ]]; then
+  echo "Specify either A_SOFT or RSOFT_FRAC, not both." >&2
+  exit 1
+fi
+softening_env=()
+softening_suffix=""
+if [[ -v A_SOFT ]]; then
+  awk -v a="${A_SOFT}" 'BEGIN {
+    if (a !~ /^[+]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$/ || a+0 <= 0 || a-a != 0) {
+      print "A_SOFT must be a finite positive number" > "/dev/stderr"; exit 1
+    }
+  }'
+  softening_env+=("A_SOFT=${A_SOFT}")
+  softening_suffix="_asoft${A_SOFT}"
+elif [[ -v RSOFT_FRAC ]]; then
+  softening_env+=("RSOFT_FRAC=${RSOFT_FRAC}")
+fi
 sink_radius="${SINK_RADIUS:-0.0}"
 sink_timescale="${SINK_TIMESCALE:-0.0}"
 sink_taper_power="${SINK_TAPER_POWER:-2.0}"
@@ -42,8 +60,11 @@ manifest_suffix=""
 if awk -v r="${sink_radius}" 'BEGIN { exit !(r > 0.0) }'; then
   manifest_suffix="_sink${sink_radius}_tau${sink_timescale}_taper${sink_taper_power}"
 fi
-manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${manifest_suffix}.txt"
+manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${softening_suffix}${manifest_suffix}.txt"
 manifest_path="${manifest_dir}/${manifest_name}"
+if [[ -v A_SOFT ]]; then
+  manifest_path="$(mktemp "${manifest_dir}/${manifest_name%.txt}.XXXXXX.txt")"
+fi
 : > "${manifest_path}"
 
 while IFS= read -r mach; do
@@ -58,7 +79,6 @@ while IFS= read -r mach; do
     GAMMA="${gamma}" \
     RHO0="${rho0}" \
     CS0="${cs0}" \
-    RSOFT_FRAC="${rsoft_frac}" \
     SINK_RADIUS="${sink_radius}" \
     SINK_TIMESCALE="${sink_timescale}" \
     SINK_TAPER_POWER="${sink_taper_power}" \
@@ -73,11 +93,11 @@ while IFS= read -r mach; do
     WARN_CELLS="${warn_cells}" \
     HARD_CELLS="${hard_cells}" \
     RUNS_DIR="${runs_dir}" \
-    "${script_dir}/prepare_one_case_3d.sh"
+    env "${softening_env[@]}" "${script_dir}/prepare_one_case_3d.sh"
   )"
   printf '%s\n' "${output}"
 
-  case_dir="$(printf '%s\n' "${output}" | awk '/^Prepared /{print $2}')"
+  case_dir="$(printf '%s\n' "${output}" | sed -n 's/^Prepared //p')"
   [[ -n "${case_dir}" ]] || {
     echo "Failed to determine generated case directory for Mach=${mach}" >&2
     exit 1

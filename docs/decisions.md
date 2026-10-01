@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-09-29 (drag sign convention)
+Last updated: 2026-10-01 (no-sink variable-softening benchmark)
 
 ## Physical Setup
 
@@ -9,10 +9,39 @@ Last updated: 2026-09-29 (drag sign convention)
   - `cs = 1`
   - `G = 1`
 - Use the perturber mass notation `M_p`, following Ostriker (1999).
-- Define the Bondi-Hoyle-Lyttleton-like scale for the current workflow as:
-  - `r_BHL = M_p / (1 + Mach^2)`
+- For 3D case generation, distinguish the Bondi and BHL scales:
+  - `r_B = M_p / cs0^2`
+  - `r_BHL = M_p / [cs0^2 (1 + Mach^2)]`, with `V = Mach * cs0`
+  - the older expression `M_p / (1 + Mach^2)` assumes `cs0=1`; the unchanged
+    2D generator still uses that assumption
 - Treat `r_BHL` as the physical inner scale used to organize force analysis.
 - Treat `r_s` as the numerical softening length used to regularize the potential near the origin.
+
+## No-Sink Variable-Softening Benchmark
+
+- Model a non-accreting softened gravitational perturber to study whether
+  regularizing the central flow stabilizes the run and leaves converged outer
+  wake and force results. This is not a BH accretion model.
+- Introduce generator-level `A_SOFT = r_B / r_soft`; for this mode set
+  `r_soft = r_B / A_SOFT`. PLUTO continues to receive `RSOFT` and uses the
+  unchanged Plummer potential.
+- Preserve `r_soft = RSOFT_FRAC * r_BHL` when `A_SOFT` is absent; fail if both
+  parameters are explicitly supplied. Preserve legacy `CS0=1` generation.
+- Keep the sink implementation for other experiments, but force
+  `SINK_RADIUS=0` in the dedicated softening sweep. Only `A_SOFT` varies there.
+- Record derived scales, actual cells per radius, and all boundary distances
+  relative to softening. Default warning thresholds (2 cells per radius,
+  4 radii to a boundary) are configurable numerical heuristics. Do not resize
+  the domain/grid automatically or override the cell-count limits.
+- Keep `r_B`, `r_BHL`, `r_soft`, force cutoff `r_cut`, and sink radius `r_sink`
+  distinct. Add no literature calibration or fixed relationship between
+  `r_cut` and `r_soft`.
+- Use the separate radial diagnostic to compare point and softened force
+  kernels, cumulative outside each cutoff and in radial shells. Preserve the
+  existing one-case and sweep-analysis semantics.
+- Treat compilation and short smoke runs as implementation checks only;
+  long-time stability, physical convergence and analytical agreement remain
+  open numerical questions.
 
 ## Dimensional Strategy
 

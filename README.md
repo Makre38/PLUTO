@@ -1,6 +1,6 @@
 # PLUTO Dynamical Friction Setup
 
-This repository prepares and runs 2D PLUTO hydrodynamics cases with a softened point-mass potential, then post-processes the output in Julia to estimate dynamical friction.
+This repository prepares and runs 2D and 3D PLUTO hydrodynamics cases with a softened point-mass potential, then post-processes the output in Julia to estimate dynamical friction.
 
 ## Script roles
 
@@ -14,6 +14,8 @@ Shell scripts live under `scripts/`.
   - Generate a Mach sweep and write a manifest file under `runs/manifests/`.
 - `scripts/prepare_mach_sweep_3d.sh`
   - Generate a 3D Mach sweep and write a manifest file under `runs_3d/manifests/`.
+- `scripts/prepare_softening_sweep_3d.sh`
+  - Generate matched no-sink 3D cases varying only `A_SOFT`, with a manifest under `runs_3d_softening/manifests/` by default.
 - `scripts/run_one_case_local.sh`
   - Build and run one prepared case locally.
 - `scripts/run_one_case_local_3d.sh`
@@ -39,6 +41,8 @@ Julia scripts:
   - Compute the force from one run output.
 - `force_from_run_3d.jl`
   - Compute `Fx` from one 3D run output using the full 3D density field.
+- `force_radial_profile_3d.jl`
+  - Compute cumulative and shell gravitational forces with both point-mass and softened kernels, without changing the existing one-case analysis.
 - `sweep_force_plot.jl`
   - Aggregate force results across a sweep.
 - `animate_density.jl`
@@ -91,6 +95,119 @@ uses a quadratic radial taper.
 SINK_RADIUS=0.05 SINK_TIMESCALE=0.01 SINK_TAPER_POWER=2.0 \
   MACH=0.5 MP=1.0 LOG_LAMBDA_MAX=1.0 CELLS_PER_RBHL=2 N_OUTPUT=10 \
   ./scripts/prepare_one_case_3d.sh
+```
+
+### No-sink, variable-softening benchmark
+
+This benchmark studies a non-accreting gravitational perturber: increase the
+softening radius to test numerical stability and the sensitivity of the outer
+wake and drag. The softening radius is neither a BH horizon nor an accretion
+radius. The existing sink is retained for other experiments.
+
+The 3D generator uses these scales (G = 1, V = Mach * CS0):
+
+```text
+r_B    = MP / CS0^2
+r_BHL  = MP / (CS0^2 * (1 + Mach^2))
+A_SOFT = r_B / r_soft
+r_soft = r_B / A_SOFT                 when A_SOFT is supplied
+r_soft = RSOFT_FRAC * r_BHL           otherwise (RSOFT_FRAC defaults to 0.25)
+```
+
+`A_SOFT` is a positive case-generation parameter; smaller values mean larger
+softening. PLUTO still receives only `RSOFT`, and its Plummer potential is
+unchanged. Explicitly supplying both `A_SOFT` and `RSOFT_FRAC` is an error.
+At `CS0=1`, legacy cases retain their grid, runtime, softening, and case names.
+For `CS0!=1`, the corrected `r_BHL` also changes the derived grid, box and runtime;
+case names gain a `cs...` suffix. The 2D generator is unchanged and still assumes
+`CS0=1` in its BHL scale.
+
+For one case:
+
+```bash
+A_SOFT=1 SINK_RADIUS=0 MACH=0.5 GAMMA=1.6666 \
+  LOG_LAMBDA_MAX=1.5 CELLS_PER_RBHL=4 RUNS_DIR=./runs_3d_softening \
+  ./scripts/prepare_one_case_3d.sh
+```
+
+For a first matched pair, generate the cases with:
+
+```bash
+A_SOFT_VALUES="2 1" MACH=0.5 GAMMA=1.6666 \
+  LOG_LAMBDA_MAX=1.5 CELLS_PER_RBHL=4 N_OUTPUT=10 \
+  RUNS_DIR=./runs_3d_softening_pair ./scripts/prepare_softening_sweep_3d.sh
+```
+
+The wrapper always forces `SINK_RADIUS=0`, even if another value is inherited.
+It accepts a whitespace-separated `A_SOFT_VALUES` list and otherwise inherits
+the one-case defaults. Its default list, `10 3 1 0.3 0.1`, is exploratory, not
+physically calibrated; the largest softening radii may trigger box warnings.
+Unset `A_SOFT` and `RSOFT_FRAC` when using this wrapper. All common parameters,
+including the box, grid, gamma and output times, are identical within a sweep.
+These commands only generate cases; execution uses the existing runners.
+
+`A_SOFT` case names include `asoft...`. Existing directories for these cases
+are never overwritten; use a fresh `RUNS_DIR` for a repeat experiment with
+different common settings. The dedicated sweep creates a unique manifest and
+records each successfully generated case, even if a later case fails.
+`prepare_mach_sweep_3d.sh` also forwards `A_SOFT` without injecting a conflicting
+legacy `RSOFT_FRAC` default. Set `GAMMA` explicitly for comparisons across
+workflows: the one-case and Mach-sweep scripts have different legacy defaults.
+
+`run_summary.txt` records `r_bondi`, `rbhl`, `a_soft`, `rsoft`, the ratios
+`rsoft_over_rbondi` and `rsoft_over_rbhl`, and actual grid-resolution measures
+`cells_per_{rsoft,rbondi,rbhl}_{x,y,z}`. It also records distances from the
+perturber to each boundary as `boundary_{xmin,xmax,ymin,ymax,zmin,zmax}_over_rsoft`.
+
+Warnings use `MIN_CELLS_PER_RSOFT=2` cells per radius and
+`MIN_BOUNDARY_OVER_RSOFT=4` softening radii to each boundary by default.
+These configurable thresholds are numerical heuristics, not physical criteria
+or convergence guarantees. They never enlarge the box or grid automatically;
+`WARN_CELLS` and `HARD_CELLS` still apply.
+
+### Radial force diagnostic
+
+```bash
+julia force_radial_profile_3d.jl CASE_DIR 1.5 --bins 64
+julia force_radial_profile_3d.jl CASE_DIR --snapshot 0 \
+  --r-cuts 0,0.1,0.3,1,3,10 --output radial.dat
+```
+
+The optional positional target selects the nearest positive-time snapshot in
+`log(CS0*t/r_BHL)`; its default is the run's `log_lambda_max`. `--snapshot` selects
+an exact dump index and can inspect the initial state. Use either selection
+method, and either `--bins` or `--r-cuts`. Cutoff values are in code length units.
+The default 64 linear bins span zero to just beyond the farthest cell center,
+giving 65 cumulative-force rows. Custom cutoffs must be nonnegative and strictly
+increasing. No plotting packages are needed.
+
+The output defaults to `CASE_DIR/force_radial_profile_3d.NNNN.dat` and contains:
+
+- `r_cut`, ratios to `r_B`, `r_BHL`, `r_soft`, and `r_shell_outer`;
+- `Fx_point`, `Fy_point`, `Fz_point` using `r_vec/r^3`;
+- `Fx_soft`, `Fy_soft`, `Fz_soft` using `r_vec/(r^2+r_soft^2)^(3/2)`;
+- the corresponding `dF*_point_shell` and `dF*_soft_shell` contributions.
+
+Both kernels use `rho-rho0` and the force-on-perturber sign convention. For `+x`
+ambient flow, `Fx` is positive drag. Cumulative values integrate `r > r_cut`;
+shells cover `r_cut < r <= r_shell_outer`. The final shell includes the remaining
+finite domain (`Inf` denotes no further radial bound). A cell exactly at the
+perturber is excluded. Cells are binned once, then summed from outside inward.
+
+`r_soft` regularizes the potential, `r_cut` selects the integration region, and
+`r_sink` controls modification of the fluid. These are independent concepts.
+The existing force scripts still use the point-mass kernel with `r_cut=r_BHL`
+(including cells exactly on the cutoff). The new tool makes no literature-based
+identification such as `r_cut=2.25*r_soft`. The stored `rbhl` is preserved when
+reading older runs; a mismatch with the corrected formula is warned about when
+Mach metadata is available. Regenerate old non-unit-`CS0` cases before using
+them as matched benchmarks.
+
+Lightweight regression checks:
+
+```bash
+python3 tests/test_softening_generation.py -v
+julia --startup-file=no tests/test_force_radial_profile_3d.jl
 ```
 
 ### Run one case locally

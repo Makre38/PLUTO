@@ -1,6 +1,6 @@
 # Next Actions
 
-Last updated: 2026-09-29 (research stages)
+Last updated: 2026-10-01 (no-sink variable-softening benchmark)
 
 ## Research Stages Toward The Final Goal
 
@@ -23,6 +23,23 @@ The velocity-gradient workflow is future work. The tasks below support the
 current baseline-validation stage.
 
 ## Near-Term Implementation
+
+### No-sink variable-softening benchmark: production validation
+
+The generator-level `A_SOFT` parameter, dedicated matched sweep, and radial
+force diagnostic requested in `additional_task.md` are implemented and have
+lightweight local checks. The next step is numerical validation:
+
+- Start with a matched pair such as `A_SOFT_VALUES="2 1"`, `MACH=0.5`,
+  `GAMMA=1.6666`, `LOG_LAMBDA_MAX=1.5`, `CELLS_PER_RBHL=4`; review the generated
+  grid and boundary ratios before running. These are exploratory settings.
+- Keep `SINK_RADIUS=0` and common parameters fixed; compare density, pressure,
+  local Mach, timestep history and radial force profiles at matching times.
+- Compare point and softened kernels and vary the force cutoff independently
+  of `r_soft`; measure whether changes extend into the outer wake.
+- Check box size and resolution convergence before interpreting any apparent
+  stability or agreement with analytic DF. Do not infer a literature cutoff
+  calibration or mark the Ostriker comparison complete from the smoke test.
 
 ### Pressure-collapse diagnostic
 

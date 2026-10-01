@@ -14,6 +14,13 @@ n_output="${N_OUTPUT:-20}"
 gamma="${GAMMA:-1.6666}"
 rho0="${RHO0:-1.0}"
 cs0="${CS0:-1.0}"
+if [[ -v A_SOFT && -v RSOFT_FRAC ]]; then
+  echo "Specify either A_SOFT or RSOFT_FRAC, not both." >&2
+  exit 1
+fi
+softening_mode=legacy
+a_soft_input="${A_SOFT-}"
+[[ -v A_SOFT ]] && softening_mode=asoft
 rsoft_frac="${RSOFT_FRAC:-0.25}"
 sink_radius="${SINK_RADIUS:-0.0}"
 sink_timescale="${SINK_TIMESCALE:-0.0}"
@@ -30,16 +37,20 @@ upstream_min="${UPSTREAM_MIN:-5.0}"
 
 warn_cells="${WARN_CELLS:-2000000}"
 hard_cells="${HARD_CELLS:-8000000}"
+min_cells_per_rsoft="${MIN_CELLS_PER_RSOFT:-2}"
+min_boundary_over_rsoft="${MIN_BOUNDARY_OVER_RSOFT:-4}"
 
 runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d_timetest}"
 export_subdir="${EXPORT_SUBDIR:-export}"
 
-eval "$(awk -v mach="${mach}" \
+derived="$(awk -v mach="${mach}" \
               -v mp="${mp}" \
               -v log_lambda_max="${log_lambda_max}" \
               -v cells_per_rbhl="${cells_per_rbhl}" \
               -v n_output="${n_output}" \
               -v cs0="${cs0}" \
+              -v softening_mode="${softening_mode}" \
+              -v a_soft_input="${a_soft_input}" \
               -v rsoft_frac="${rsoft_frac}" \
               -v sink_radius="${sink_radius}" \
               -v sink_timescale="${sink_timescale}" \
@@ -49,15 +60,57 @@ eval "$(awk -v mach="${mach}" \
               -v margin_y="${margin_y}" \
               -v upstream_min="${upstream_min}" \
               -v warn_cells="${warn_cells}" \
-              -v hard_cells="${hard_cells}" '
+              -v hard_cells="${hard_cells}" \
+              -v min_cells_per_rsoft="${min_cells_per_rsoft}" \
+              -v min_boundary_over_rsoft="${min_boundary_over_rsoft}" '
 function ceil(x) { return (x == int(x)) ? x : int(x) + 1 }
 function max2(a,b) { return (a > b) ? a : b }
 function max3(a,b,c) { return max2(a, max2(b, c)) }
+function fail(message) { print "Invalid case: " message > "/dev/stderr"; exit 1 }
+function number(name, value, positive) {
+  if (value !~ /^[+-]?([0-9]+([.][0-9]*)?|[.][0-9]+)([eE][+-]?[0-9]+)?$/ ||
+      value-value != 0 || (positive && value+0 <= 0)) fail(name " must be a finite " (positive ? "positive " : "") "number")
+}
+function resolution(axis, spacing) {
+  printf("cells_per_rsoft_%s=%.17g\n", axis, rsoft/spacing)
+  printf("cells_per_rbondi_%s=%.17g\n", axis, r_bondi/spacing)
+  printf("cells_per_rbhl_%s=%.17g\n", axis, rbhl/spacing)
+  if (rsoft/spacing < min_cells_per_rsoft)
+    printf("Warning: r_soft/d%s=%.6g < MIN_CELLS_PER_RSOFT=%g (numerical heuristic).\n", axis, rsoft/spacing, min_cells_per_rsoft) > "/dev/stderr"
+}
+function boundary(label, distance) {
+  printf("boundary_%s_over_rsoft=%.17g\n", label, distance/rsoft)
+  if (distance/rsoft < min_boundary_over_rsoft)
+    printf("Warning: %s distance/r_soft=%.6g < MIN_BOUNDARY_OVER_RSOFT=%g (numerical heuristic).\n", label, distance/rsoft, min_boundary_over_rsoft) > "/dev/stderr"
+}
 BEGIN {
-  rbhl = mp/(1.0 + mach*mach)
+  number("MACH", mach, 0)
+  if (mach < 0) fail("MACH must be nonnegative for the +x inflow geometry")
+  number("MP", mp, 1)
+  number("CS0", cs0, 1)
+  number("LOG_LAMBDA_MAX", log_lambda_max, 0)
+  number("CELLS_PER_RBHL", cells_per_rbhl, 1)
+  number("N_OUTPUT", n_output, 1)
+  if (n_output != int(n_output)) fail("N_OUTPUT must be an integer")
+  number("MARGIN_UP", margin_up, 1)
+  number("MARGIN_DOWN", margin_down, 1)
+  number("MARGIN_Y", margin_y, 1)
+  number("UPSTREAM_MIN", upstream_min, 1)
+  number("WARN_CELLS", warn_cells, 1)
+  number("HARD_CELLS", hard_cells, 1)
+  number("MIN_CELLS_PER_RSOFT", min_cells_per_rsoft, 1)
+  number("MIN_BOUNDARY_OVER_RSOFT", min_boundary_over_rsoft, 1)
+  if (softening_mode == "asoft") number("A_SOFT", a_soft_input, 1)
+  else number("RSOFT_FRAC", rsoft_frac, 1)
+  r_bondi = mp/(cs0*cs0)
+  rbhl = r_bondi/(1.0 + mach*mach)
   tmax = rbhl/cs0*exp(log_lambda_max)
   vinf = mach*cs0
-  rsoft = rsoft_frac*rbhl
+  rsoft = softening_mode == "asoft" ? r_bondi/a_soft_input : rsoft_frac*rbhl
+  number("derived r_B", r_bondi, 1)
+  number("derived r_BHL", rbhl, 1)
+  number("derived r_soft", rsoft, 1)
+  number("derived tmax", tmax, 1)
   dx_target = rbhl/cells_per_rbhl
   l_up_wave = margin_up*tmax*max2(cs0 - vinf, 0.0)
   l_up = max3(upstream_min, 3.0*rbhl, l_up_wave)
@@ -73,18 +126,34 @@ BEGIN {
   ny = ceil((ymax - ymin)/dx_target)
   nz = ceil((zmax - zmin)/dx_target)
   ncell = nx*ny*nz
+  number("derived cell count", ncell, 1)
+  if (ncell > hard_cells) fail("Ncell=" ncell " exceeds HARD_CELLS=" hard_cells)
   dx_actual = (xmax - xmin)/nx
   dy_actual = (ymax - ymin)/ny
   dz_actual = (zmax - zmin)/nz
   dt_out = tmax/n_output
   warn = (ncell > warn_cells) ? 1 : 0
-  hard = (ncell > hard_cells) ? 1 : 0
   case_name = sprintf("mach%.3f_mp%.3f_ll%.3f_rbhl%.1f_3d", mach, mp, log_lambda_max, cells_per_rbhl)
+  if (softening_mode == "asoft") case_name = sprintf("%s_asoft%.17g", case_name, a_soft_input)
+  if (cs0 != 1.0) case_name = sprintf("%s_cs%.17g", case_name, cs0)
   if (sink_radius > 0.0) {
     case_name = sprintf("%s_sink%.3g_tau%.3g_taper%.3g", case_name, sink_radius, sink_timescale, sink_taper_power)
   }
 
+  printf("r_bondi=%.17g\n", r_bondi)
   printf("rbhl=%.17g\n", rbhl)
+  printf("a_soft=%.17g\n", r_bondi/rsoft)
+  printf("rsoft_over_rbondi=%.17g\n", rsoft/r_bondi)
+  printf("rsoft_over_rbhl=%.17g\n", rsoft/rbhl)
+  resolution("x", dx_actual)
+  resolution("y", dy_actual)
+  resolution("z", dz_actual)
+  boundary("xmin", -xmin)
+  boundary("xmax", xmax)
+  boundary("ymin", -ymin)
+  boundary("ymax", ymax)
+  boundary("zmin", -zmin)
+  boundary("zmax", zmax)
   printf("tmax=%.17g\n", tmax)
   printf("vinf=%.17g\n", vinf)
   printf("rsoft=%.17g\n", rsoft)
@@ -104,14 +173,9 @@ BEGIN {
   printf("nz=%d\n", nz)
   printf("ncell=%d\n", ncell)
   printf("warn=%d\n", warn)
-  printf("hard=%d\n", hard)
   printf("case_name=%s\n", case_name)
 }')"
-
-if [[ "${hard}" -eq 1 ]]; then
-  echo "Refusing to generate case: Ncell=${ncell} exceeds HARD_CELLS=${hard_cells}" >&2
-  exit 1
-fi
+eval "${derived}"
 
 if [[ "${warn}" -eq 1 ]]; then
   echo "Warning: Ncell=${ncell} exceeds WARN_CELLS=${warn_cells}" >&2
@@ -119,7 +183,15 @@ fi
 
 mkdir -p "${runs_dir}"
 case_dir="${runs_dir}/${case_name}"
-mkdir -p "${case_dir}"
+if [[ "${softening_mode}" == asoft ]]; then
+  # New benchmark cases must not overwrite an earlier run with different settings.
+  mkdir "${case_dir}" || {
+    echo "Refusing to overwrite A_SOFT case: ${case_dir}. Choose a fresh RUNS_DIR." >&2
+    exit 1
+  }
+else
+  mkdir -p "${case_dir}"
+fi
 mkdir -p "${case_dir}/${export_subdir}"
 mkdir -p "${case_dir}/logs"
 
@@ -201,8 +273,14 @@ EOF
 cat > "${case_dir}/run_summary.txt" <<EOF
 case_name = ${case_name}
 dimension = 3
+mach = ${mach}
 mp = ${mp}
+r_bondi = ${r_bondi}
 rbhl = ${rbhl}
+softening_mode = ${softening_mode}
+a_soft = ${a_soft}
+rsoft_over_rbondi = ${rsoft_over_rbondi}
+rsoft_over_rbhl = ${rsoft_over_rbhl}
 tmax = ${tmax}
 vinf = ${vinf}
 rsoft = ${rsoft}
@@ -220,6 +298,23 @@ dx_target = ${dx_target}
 dx_actual = ${dx_actual}
 dy_actual = ${dy_actual}
 dz_actual = ${dz_actual}
+cells_per_rsoft_x = ${cells_per_rsoft_x}
+cells_per_rsoft_y = ${cells_per_rsoft_y}
+cells_per_rsoft_z = ${cells_per_rsoft_z}
+cells_per_rbondi_x = ${cells_per_rbondi_x}
+cells_per_rbondi_y = ${cells_per_rbondi_y}
+cells_per_rbondi_z = ${cells_per_rbondi_z}
+cells_per_rbhl_x = ${cells_per_rbhl_x}
+cells_per_rbhl_y = ${cells_per_rbhl_y}
+cells_per_rbhl_z = ${cells_per_rbhl_z}
+boundary_xmin_over_rsoft = ${boundary_xmin_over_rsoft}
+boundary_xmax_over_rsoft = ${boundary_xmax_over_rsoft}
+boundary_ymin_over_rsoft = ${boundary_ymin_over_rsoft}
+boundary_ymax_over_rsoft = ${boundary_ymax_over_rsoft}
+boundary_zmin_over_rsoft = ${boundary_zmin_over_rsoft}
+boundary_zmax_over_rsoft = ${boundary_zmax_over_rsoft}
+min_cells_per_rsoft_warning = ${min_cells_per_rsoft}
+min_boundary_over_rsoft_warning = ${min_boundary_over_rsoft}
 nx = ${nx}
 ny = ${ny}
 nz = ${nz}
