@@ -1,6 +1,14 @@
 # Current Status
 
-Last updated: 2026-10-01 (no-sink variable-softening benchmark)
+Last updated: 2026-10-05 (user-reported CFL comparison)
+
+Current handoff: implementation is committed as `5e1472a` on
+`dev/no-sink-variable-softening`. Local regression and serial smoke checks
+passed. **The user reports that changing only CFL allowed the `0.2` run to
+continue while the `0.4` run stopped.** Completion of the `0.2` run, other
+numerical factors, and systematic remote/MPI verification remain unconfirmed. See the
+[benchmark handoff](no_sink_softening_benchmark.md) for the work summary and
+pending verification procedure.
 
 ## Project Aim
 
@@ -63,7 +71,7 @@ quantitative comparison and final study should be treated as 3D problems.
 - The immediate benchmark now tests increased softening without a sink. The
   user reports an artificial-looking downstream hole with the smooth sink;
   the new benchmark instead models a non-accreting softened perturber.
-- Implementation and lightweight verification are complete; whether softening
+- Implementation and local lightweight verification are complete; whether softening
   stabilizes a production run and preserves converged outer wakes/DF is still
   unverified. Softening is not identified with a force cutoff or a BH radius.
 
@@ -83,10 +91,15 @@ quantitative comparison and final study should be treated as 3D problems.
   - `--force-mode auto|axisym|2d|3d`
 - For 3D runs, the preferred force calculation is a true 3D volume integral.
 - For 2D runs, the direct comparison to Ostriker (1999) is provisional because the simulation is not a true 3D setup.
-- Recent failing 3D no-sink runs indicate that the final stop is caused by local Mach divergence near the potential center.
+- The inspected 3D no-sink log shows Mach divergence followed by an explicit
+  `NextTimeStep(): dt is too small` abort; it does not locate the first failure.
 - No `CS_ALERT` appeared in the inspected failure, but later plots showed very small pressure near the origin for `gamma = 1.6666`.
 - Near-isothermal settings such as `gamma = 1.00001` did not show the same pressure-collapse failure mode in the tested case.
-- The current leading hypothesis is pressure or internal-energy depletion near the origin, followed by a small local sound speed and divergent local Mach number.
+- The 2026-10-05 CFL-only comparison makes timestep instability a leading
+  candidate: the user reports `CFL=0.2` running and `0.4` stopping. Other
+  factors have not been tested, and initial energy cancellation is not established.
+  The original run used `r_soft=0.2475*r_B`, about two cells per softening
+  radius, and no sink. See the [comparison record](no_sink_softening_benchmark.md#2026-10-05-user-reported-cfl-comparison).
 - The 3D central sink is now a smooth absorbing sink rather than the older top-hat reset: inside `SINK_RADIUS`, density and pressure relax toward the initial ambient state and all velocity components relax toward zero with a tapered `alpha(r)`.
 
 ## Verification Status
@@ -119,13 +132,17 @@ Verified locally:
 - `animate_density.jl` loaded in Julia after the contour update, and a manual user check reported that the plotting behavior worked.
 - A generated 3D sink case compiled locally after the PLUTO API and `gnu17` fixes.
 - `CS_ALERT` and `MACH_ALERT` were smoke-tested locally with low thresholds.
-- Slurm wrapper changes were syntax-checked locally, and a remote run using `MPI_LAUNCHER=srun` compiled and launched.
+- Earlier Slurm wrapper changes were syntax-checked locally, and a remote run
+  using `MPI_LAUNCHER=srun` compiled and launched. This predates the variable-
+  softening benchmark and does not verify its remote execution.
 - Julia plotting scripts loaded locally after the origin-overlay cleanup, and `--show-overlays` parsing was checked.
 
 Partially verified or not yet verified:
 
-- No production no-sink softening sweep, MPI verification, long-time stability
-  comparison, or wake/force convergence study has been performed for this task.
+- Remote execution is partially documented by the user-reported CFL comparison;
+  the `0.2` run's reached time and completion are unconfirmed. Systematic
+  build/serial/MPI verification, production softening sweeps, long-time
+  stability, and wake/force convergence remain unverified.
 
 - Full PNG generation from `sweep_force_plot.jl` was not verified locally because the local Julia environment lacks `Plots`.
 - Remote verification of updated 3D sweep plotting should be done after relevant jobs finish.
@@ -148,7 +165,11 @@ Partially verified or not yet verified:
 - The 2D-to-3D axisymmetric reconstruction in sweep analysis is useful as a diagnostic but may not represent the physics assumed by Ostriker (1999).
 - The old `problem.md` noted an inconsistency between `force_from_run.jl` and `sweep_force_plot.jl`; recent work reduced this by adding unified 2D/3D paths, but force-mode choices still need to be interpreted carefully.
 - 3D density diagnostics show a suspicious low-density hole-like structure near the potential center. It appears numerical from the animation behavior, and at least one comparable-resolution 2D run did not show the same feature.
-- Some 3D runs can collapse to extremely small CFL timesteps. The current best evidence points to pressure becoming extremely small near the origin for `gamma = 1.6666`, which then drives the local sound speed down and the local Mach number up to infinity.
-- The same failure mode has not been seen so far in near-isothermal tests such as `gamma = 1.00001`, so EOS and energy evolution are central to the next diagnosis.
+- Some 3D runs collapse to extremely small timesteps. The latest comparison
+  supports CFL sensitivity; earlier low-pressure observations do not establish
+  whether pressure collapse initiates the failure or follows numerical instability.
+- Earlier near-isothermal tests such as `gamma = 1.00001` did not show the same
+  failure mode, but EOS and other factors have not been varied in the latest
+  CFL-only comparison. The generator still defaults to `CFL=0.4`.
 - The smooth absorbing sink is a numerical and physical modeling choice. Its influence may propagate into the downstream wake, so force results need sensitivity checks against `SINK_RADIUS`, `SINK_TIMESCALE`, and the relation between `r_sink` and `r_cut`.
 - Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.

@@ -1,6 +1,6 @@
 # Next Actions
 
-Last updated: 2026-10-01 (no-sink variable-softening benchmark)
+Last updated: 2026-10-05 (user-reported CFL comparison)
 
 ## Research Stages Toward The Final Goal
 
@@ -24,11 +24,25 @@ current baseline-validation stage.
 
 ## Near-Term Implementation
 
-### No-sink variable-softening benchmark: production validation
+### No-sink variable-softening benchmark: remote verification, then production validation
 
 The generator-level `A_SOFT` parameter, dedicated matched sweep, and radial
-force diagnostic requested in `additional_task.md` are implemented and have
-lightweight local checks. The next step is numerical validation:
+force diagnostic are implemented in `5e1472a` and have passed lightweight
+local checks. **A remote CFL-only comparison is now user-reported: `0.2`
+was running, while `0.4` stopped.** Completion and systematic remote
+verification are not established. Follow the
+[remote verification procedure](no_sink_softening_benchmark.md#remote-verification-to-perform)
+for environment checks, short serial/MPI execution, logs and force analysis.
+Record remote results before marking that stage complete.
+
+First preserve both comparison runs' settings/logs and record the `0.2`
+run's reached time and exit status. See the
+[CFL comparison record](no_sink_softening_benchmark.md#2026-10-05-user-reported-cfl-comparison).
+Other factors have not been tested in this comparison. Keep CFL fixed when
+testing resolution, softening, or other numerical choices. Review the
+generator's unchanged `CFL=0.4` default before further 3D RK2 runs.
+
+After remote smoke tests pass, proceed to numerical validation:
 
 - Start with a matched pair such as `A_SOFT_VALUES="2 1"`, `MACH=0.5`,
   `GAMMA=1.6666`, `LOG_LAMBDA_MAX=1.5`, `CELLS_PER_RBHL=4`; review the generated
@@ -50,6 +64,8 @@ Goal:
 Current state:
 
 - `CS_ALERT_THRESHOLD` and `MACH_ALERT_THRESHOLD` diagnostics exist.
+- The latest CFL-only comparison supports timestep instability as a leading
+  candidate; energy cancellation has not been established as the initial cause.
 - A failing no-sink run produced no `CS_ALERT`, but Mach still diverged to infinity.
 - Post-failure plots suggest that for `gamma = 1.6666`, pressure becomes extremely small near the origin.
 - Near-isothermal `gamma = 1.00001` tests did not show the same failure mode.
