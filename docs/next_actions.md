@@ -1,6 +1,6 @@
 # Next Actions
 
-Last updated: 2026-10-20 (planned plotting, velocity-gradient inflow, and sink removal)
+Last updated: 2026-10-20 (planned feature changes and configuration-file setup)
 
 ## Research Stages Toward The Final Goal
 
@@ -95,6 +95,46 @@ an axial profile is not a final decision to exclude 2D slices.
   analysis still work.
 - This supersedes the earlier plan to retain and tune the sink for new
   experiments. The sink remains implemented until this removal is performed.
+
+#### Simulation setup from a configuration file
+
+- Add a file-based setup interface so parameter exploration does not require
+  editing tracked shell scripts or retyping long environment/CLI assignments.
+  TOML is the preferred format candidate; the schema, parser, and command
+  interface remain to be selected. This is not implemented.
+- Let a short command select a setup file for preparation and subsequent
+  local or batch execution. Keep `pluto.ini` as the generated PLUTO input;
+  the setup file also describes generator-level controls and derived scales.
+- Cover physical parameters (Mach, gamma, mass, density, sound speed,
+  softening, and future velocity gradients), numerical controls (including
+  CFL), resolution/box/runtime controls, and output settings. Define which
+  build/MPI/Slurm settings belong in the file versus a machine-specific
+  configuration; avoid coupling physical cases to one cluster.
+- Track example configurations and selected reproducible benchmarks in Git.
+  Put personal trial configurations in a dedicated ignored directory; choose
+  its path and document how to promote a case into a tracked benchmark.
+  Parameter changes should not require changes to executable scripts.
+- Preserve the original setup file and the fully resolved effective settings
+  with each run, including defaults, overrides, derived quantities, and code
+  revision. Define relative-path resolution and existing-case/overwrite
+  behavior so repeated commands cannot silently change an earlier run.
+- Candidate precedence is explicit CLI overrides > file values > defaults.
+  Decide how existing environment-variable workflows remain compatible and
+  prevent inherited shell variables from silently overriding file values.
+  Record the chosen precedence and resolved values in the run metadata.
+- Validate types, ranges, unknown keys, and conflicting inputs (for example,
+  `A_SOFT` versus `RSOFT_FRAC`) before generating or launching a case. Define
+  behavior for old sink settings consistently with planned sink removal.
+- Specify matched sweep lists and their expansion rules; preserve manifests
+  and per-case resolved settings. Decide initial 3D coverage and any 2D
+  compatibility explicitly. Reuse one configuration-resolution path across
+  preparation, local execution, and Slurm wrappers.
+- Likely scope: configuration loader/schema, generators and runner/submitter
+  interfaces, example files, `.gitignore`, metadata, documentation, and tests.
+- Future verification: equivalent legacy and file-based inputs produce the
+  same generated parameters; precedence, validation, relative paths, sweep
+  expansion, case preservation, and effective-setting records behave as
+  documented. Check a short local run and later the remote wrapper workflow.
 
 ### No-sink variable-softening benchmark: remote verification, then production validation
 

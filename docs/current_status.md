@@ -12,10 +12,14 @@ pending verification procedure.
 
 ## Requested Work (Not Implemented)
 
-On 2026-10-20 the user requested three changes: plotting raw
+On 2026-10-20 the user requested four changes: plotting raw
 `alpha=rho/rho0-1` (preferentially as a profile along an axis through the
 perturber, with 2D slices still an option), a transverse velocity gradient
-at the inflow boundary, and removal of the central absorbing sink.
+at the inflow boundary, removal of the central absorbing sink, and simulation
+setup from a configuration file (TOML is the preferred candidate).
+The file interface should avoid script edits and repeated long commands,
+separate tracked examples from ignored trial setups, and retain effective
+settings with each run. Its schema and override/compatibility rules are pending.
 The gravitational perturber and variable softening are to remain.
 The [feature plan](next_actions.md#requested-feature-changes-2026-10-20-planning-only)
 records scope, unresolved design choices, and future verification.

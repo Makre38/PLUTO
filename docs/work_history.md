@@ -397,3 +397,11 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Verification: reviewed the plan against the request and existing plotting/sink code; checked Markdown links, whitespace, and the staged documentation-only diff. No implementation tests or simulations were run.
 - Incomplete or untouched: all three features remain unimplemented. CFL defaults and numerical/physical validation status are unchanged. The pre-existing `docs/report.md` and its 2026-10-19 history entry are excluded from this commit and preserved as uncommitted work.
 - Next steps: settle axis sampling, velocity profile/initial conditions, and old sink-configuration compatibility before separately authorizing implementation.
+
+## 2026-10-20 19:27 JST - Configuration-File Setup Plan
+
+- Purpose: plan reusable simulation setup files to avoid modifying tracked shell scripts or repeating long parameter commands.
+- Changes made: added file-based setup as the fourth requested feature in next actions, current status, and decisions. Recorded TOML as the preferred candidate, continued generation of `pluto.ini`, tracked examples versus ignored trial files, per-run original/effective configuration records, candidate override precedence, legacy environment compatibility, validation, sweep handling, and future verification.
+- Verification: checked documentation links/anchors, whitespace, and the staged documentation-only diff. No implementation tests or simulations were run.
+- Incomplete or untouched: configuration loading, examples, ignore rules, and CLI behavior are not implemented; schema/parser and compatibility details remain open. Existing source code and CFL defaults are unchanged. The prior `docs/report.md` and its history entry remain uncommitted and excluded from this commit.
+- Next steps: choose the schema, scope, parser dependencies, and override/migration rules before separately authorizing implementation.

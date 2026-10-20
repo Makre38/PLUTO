@@ -82,6 +82,13 @@ Last updated: 2026-10-20 (planned feature changes)
 
 ## Run Generation
 
+- Planned (2026-10-20): accept simulation setup files, with TOML as the
+  preferred format candidate, while continuing to generate `pluto.ini`.
+  Track examples/benchmarks, keep personal trial setups in an ignored
+  directory, and archive original plus effective settings per run. Candidate
+  precedence is explicit CLI overrides > file > defaults; environment-variable
+  compatibility, schema, parser, and sweep rules are not yet decided. See
+  [the setup-file plan](next_actions.md#simulation-setup-from-a-configuration-file).
 - Planned (2026-10-20): support an inflow velocity gradient perpendicular
   to the flow, with zero gradient recovering the uniform baseline. Profile
   shape/strength and treatment of the initial domain remain undecided. See
