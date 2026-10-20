@@ -1,14 +1,26 @@
 # Current Status
 
-Last updated: 2026-10-05 (user-reported CFL comparison)
+Last updated: 2026-10-20 (planned feature changes)
 
-Current handoff: implementation is committed as `5e1472a` on
-`dev/no-sink-variable-softening`. Local regression and serial smoke checks
+Current handoff: implementation `5e1472a` and the documentation update
+`19d785a` have been merged into local `main`. Local regression and serial smoke checks
 passed. **The user reports that changing only CFL allowed the `0.2` run to
 continue while the `0.4` run stopped.** Completion of the `0.2` run, other
 numerical factors, and systematic remote/MPI verification remain unconfirmed. See the
 [benchmark handoff](no_sink_softening_benchmark.md) for the work summary and
 pending verification procedure.
+
+## Requested Work (Not Implemented)
+
+On 2026-10-20 the user requested three changes: plotting raw
+`alpha=rho/rho0-1` (preferentially as a profile along an axis through the
+perturber, with 2D slices still an option), a transverse velocity gradient
+at the inflow boundary, and removal of the central absorbing sink.
+The gravitational perturber and variable softening are to remain.
+The [feature plan](next_actions.md#requested-feature-changes-2026-10-20-planning-only)
+records scope, unresolved design choices, and future verification.
+Only documentation has been updated; the sink and existing plotting/inflow
+implementations are still present. Earlier sink-tuning plans are superseded.
 
 ## Project Aim
 

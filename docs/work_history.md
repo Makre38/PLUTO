@@ -389,3 +389,11 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Verification: checked the documentation against the user's report and local artifacts; reviewed the diff and ran `git diff --check`. No simulations, regression tests, remote commands, or job submissions were run for this documentation-only update.
 - Incomplete or untouched: existing uncommitted documentation changes and the prior deletion of `additional_task.md` were preserved. No source, generator, or CFL default was changed. The `0.2` run's completion, systematic MPI verification, other numerical factors, and wake/force convergence remain unverified.
 - Next steps: retain both comparison runs' configuration/logs and record reached time and exit status, then test other factors separately at fixed CFL. Review the generator's `CFL=0.4` default before further 3D RK2 runs.
+
+## 2026-10-20 19:10 JST - Planned Feature Changes
+
+- Purpose: record requested additions/removal as future work, without implementing them.
+- Changes made: documented raw `alpha=rho/rho0-1` plots with an axial profile preferred and 2D slices still optional; transverse velocity-gradient inflow with unresolved profile/initial-state choices; and removal of sink relaxation, parameters, logs, and dependencies while retaining the gravitational perturber and softening. Added scope and verification criteria to next actions, updated current status, and superseded the previous sink-retention/tuning policy in decisions and next actions.
+- Verification: reviewed the plan against the request and existing plotting/sink code; checked Markdown links, whitespace, and the staged documentation-only diff. No implementation tests or simulations were run.
+- Incomplete or untouched: all three features remain unimplemented. CFL defaults and numerical/physical validation status are unchanged. The pre-existing `docs/report.md` and its 2026-10-19 history entry are excluded from this commit and preserved as uncommitted work.
+- Next steps: settle axis sampling, velocity profile/initial conditions, and old sink-configuration compatibility before separately authorizing implementation.

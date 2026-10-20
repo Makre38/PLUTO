@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-10-01 (no-sink variable-softening benchmark)
+Last updated: 2026-10-20 (planned feature changes)
 
 ## Physical Setup
 
@@ -27,8 +27,10 @@ Last updated: 2026-10-01 (no-sink variable-softening benchmark)
   unchanged Plummer potential.
 - Preserve `r_soft = RSOFT_FRAC * r_BHL` when `A_SOFT` is absent; fail if both
   parameters are explicitly supplied. Preserve legacy `CS0=1` generation.
-- Keep the sink implementation for other experiments, but force
-  `SINK_RADIUS=0` in the dedicated softening sweep. Only `A_SOFT` varies there.
+- The original implementation retained the sink and forced `SINK_RADIUS=0`
+  in the dedicated softening sweep. On 2026-10-20 the user requested removal
+  of the sink feature; this supersedes the retention policy. Removal is
+  planned, not implemented. The gravitational perturber and softening remain.
 - Record derived scales, actual cells per radius, and all boundary distances
   relative to softening. Default warning thresholds (2 cells per radius,
   4 radii to a boundary) are configurable numerical heuristics. Do not resize
@@ -51,6 +53,10 @@ Last updated: 2026-10-01 (no-sink variable-softening benchmark)
 
 ## Output And Analysis
 
+- Planned (2026-10-20): add raw density perturbation `alpha=rho/rho0-1`
+  plotting. An axis through the perturber is the preferred initial candidate;
+  a 2D slice remains an alternative. Axis choice and off-grid sampling are
+  not yet decided. Distinguish raw alpha from the existing signed-log view.
 - Use PLUTO `double` binary output for the current workflow.
 - Reconsider HDF5 only if richer metadata, 3D production data sharing, or a longer-lived analysis pipeline requires it.
 - Keep force calculation in Julia rather than PLUTO so diagnostics can be recomputed without rerunning simulations.
@@ -76,6 +82,10 @@ Last updated: 2026-10-01 (no-sink variable-softening benchmark)
 
 ## Run Generation
 
+- Planned (2026-10-20): support an inflow velocity gradient perpendicular
+  to the flow, with zero gradient recovering the uniform baseline. Profile
+  shape/strength and treatment of the initial domain remain undecided. See
+  [the feature plan](next_actions.md#requested-feature-changes-2026-10-20-planning-only).
 - Generate `pluto.ini` separately for each run.
 - Control effective resolution by `cells_per_rbhl`, not directly by hand-written `Nx` and `Ny`.
 - Compute `r_BHL`, box size, total runtime, and grid size from a small set of physical and numerical controls.
