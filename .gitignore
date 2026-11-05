@@ -1,10 +1,10 @@
 *.o
 pluto
 *.swp
-
 runs*/
-
 output/
-
+tests/
 
 ./rsync_from_trinity.sh
+
+AGENTS.md
