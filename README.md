@@ -80,31 +80,28 @@ to `logs/diagnostics_mach_alert_3d.rankNNNN.dat` and the runtime log. The defaul
 thresholds are `CS_ALERT_THRESHOLD=1.0e-6` and `MACH_ALERT_THRESHOLD=10.0`; set
 either threshold to `0.0` to disable that diagnostic. `CS_ALERT_EVERY_STEPS` and
 `MACH_ALERT_EVERY_STEPS` control repeated alert logging while a condition
-persists. `UserDefBoundary(..., side == 0)` calls are recorded in
-`logs/sink_boundary_3d.rankNNNN.dat`, including the number of cells inside the
-configured sink radius on that rank.
+persists. The perturber is non-accreting: there is no central absorbing sink or
+fluid relaxation. Gravity retains the Plummer potential and configurable
+softening. Sound-speed and Mach diagnostics still write rank-specific logs.
 
-A central smooth absorbing sink can be enabled for 3D cases by setting
-`SINK_RADIUS`. Inside that radius, density and pressure are relaxed toward the
-initial ambient values, and all velocity components are relaxed toward zero.
-The relaxation strength is
-`alpha = (1 - exp(-dt/SINK_TIMESCALE)) * max(0, 1 - r/SINK_RADIUS)^SINK_TAPER_POWER`,
-so the sink tapers smoothly to zero at `SINK_RADIUS`. The default
-`SINK_RADIUS=0.0` disables the sink, and the default `SINK_TAPER_POWER=2.0`
-uses a quadratic radial taper.
+The former `SINK_RADIUS`, `SINK_TIMESCALE`, `SINK_TAPER_POWER`,
+`SINK_RHO_FLOOR`, and `SINK_VELOCITY_FACTOR` environment options are rejected
+by all 3D case generators, even when empty or zero. Unset them for new cases.
+New cases contain 13 user parameters and no sink settings or sink logs.
 
-```bash
-SINK_RADIUS=0.05 SINK_TIMESCALE=0.01 SINK_TAPER_POWER=2.0 \
-  MACH=0.5 MP=1.0 LOG_LAMBDA_MAX=1.0 CELLS_PER_RBHL=2 N_OUTPUT=10 \
-  ./scripts/prepare_one_case_3d.sh
-```
+Existing runs are preserved. Continue analyzing their snapshots with the
+Julia tools, which tolerate old sink fields in `run_summary.txt`. To rerun
+an old model, retain its original `init.c`, `definitions.h`, and `pluto.ini`
+together; do not combine an old parameter file with the new source. Generate
+a fresh directory for the new non-accreting model. Historical sink-enabled
+runs must not be treated as equivalent to the new model.
 
 ### No-sink, variable-softening benchmark
 
 This benchmark studies a non-accreting gravitational perturber: increase the
 softening radius to test numerical stability and the sensitivity of the outer
 wake and drag. The softening radius is neither a BH horizon nor an accretion
-radius. The existing sink is retained for other experiments.
+radius. The absorbing sink feature has been removed.
 
 The 3D generator uses these scales (G = 1, V = Mach * CS0):
 
@@ -127,7 +124,7 @@ case names gain a `cs...` suffix. The 2D generator is unchanged and still assume
 For one case:
 
 ```bash
-A_SOFT=1 SINK_RADIUS=0 MACH=0.5 GAMMA=1.6666 \
+A_SOFT=1 MACH=0.5 GAMMA=1.6666 \
   LOG_LAMBDA_MAX=1.5 CELLS_PER_RBHL=4 RUNS_DIR=./runs_3d_softening \
   ./scripts/prepare_one_case_3d.sh
 ```
@@ -140,9 +137,10 @@ A_SOFT_VALUES="2 1" MACH=0.5 GAMMA=1.6666 \
   RUNS_DIR=./runs_3d_softening_pair ./scripts/prepare_softening_sweep_3d.sh
 ```
 
-The wrapper always forces `SINK_RADIUS=0`, even if another value is inherited.
-It accepts a whitespace-separated `A_SOFT_VALUES` list and otherwise inherits
-the one-case defaults. Its default list, `10 3 1 0.3 0.1`, is exploratory, not
+All generated cases use the non-accreting model. The wrapper rejects removed
+sink environment options before creating cases or manifests. It accepts a
+whitespace-separated `A_SOFT_VALUES` list and otherwise inherits the one-case
+defaults. Its default list, `10 3 1 0.3 0.1`, is exploratory, not
 physically calibrated; the largest softening radii may trigger box warnings.
 Unset `A_SOFT` and `RSOFT_FRAC` when using this wrapper. All common parameters,
 including the box, grid, gamma and output times, are identical within a sweep.
@@ -196,8 +194,9 @@ shells cover `r_cut < r <= r_shell_outer`. The final shell includes the remainin
 finite domain (`Inf` denotes no further radial bound). A cell exactly at the
 perturber is excluded. Cells are binned once, then summed from outside inward.
 
-`r_soft` regularizes the potential, `r_cut` selects the integration region, and
-`r_sink` controls modification of the fluid. These are independent concepts.
+`r_soft` regularizes the potential and `r_cut` selects the integration region;
+they are independent. Sink radius fields in old runs describe the historical
+fluid-modification model, not either of these radii.
 The existing force scripts still use the point-mass kernel with `r_cut=r_BHL`
 (including cells exactly on the cutoff). The new tool makes no literature-based
 identification such as `r_cut=2.25*r_soft`. The stored `rbhl` is preserved when

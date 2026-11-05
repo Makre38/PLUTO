@@ -5,6 +5,14 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd "${script_dir}/.." && pwd)"
 
+# Removed sink options must not silently turn an old setup into a new model.
+for removed_option in SINK_RADIUS SINK_TIMESCALE SINK_TAPER_POWER SINK_RHO_FLOOR SINK_VELOCITY_FACTOR; do
+  if [[ -v "${removed_option}" ]]; then
+    echo "${removed_option} is no longer supported: the absorbing sink was removed. Unset all SINK_* options for new cases; preserve old runs separately." >&2
+    exit 1
+  fi
+done
+
 if [[ -v RSOFT_FRAC || -v A_SOFT ]]; then
   echo "Use A_SOFT_VALUES for this sweep; unset A_SOFT and RSOFT_FRAC." >&2
   exit 1
@@ -30,10 +38,10 @@ awk '
 runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d_softening}"
 mkdir -p "${runs_dir}/manifests"
 manifest_path="$(mktemp "${runs_dir}/manifests/softening_3d.XXXXXX.txt")"
-echo "No-sink benchmark: forcing SINK_RADIUS=0; varying A_SOFT only."
+echo "Non-accreting benchmark: varying A_SOFT only."
 echo "Manifest: ${manifest_path} (records each successfully prepared case)"
 for a_soft in "${a_soft_values[@]}"; do
-  output="$(A_SOFT="${a_soft}" SINK_RADIUS=0 RUNS_DIR="${runs_dir}" \
+  output="$(A_SOFT="${a_soft}" RUNS_DIR="${runs_dir}" \
     "${script_dir}/prepare_one_case_3d.sh")"
   printf '%s\n' "${output}"
   case_dir="$(printf '%s\n' "${output}" | sed -n 's/^Prepared //p')"

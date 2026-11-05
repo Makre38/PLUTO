@@ -102,19 +102,30 @@ class SofteningGeneration(unittest.TestCase):
 
     def test_matched_no_sink_sweep(self):
         proc, cases = self.run_script("prepare_softening_sweep_3d.sh", folder="with spaces",
-                                      A_SOFT_VALUES="3 1\n0.3", SINK_RADIUS=9, GAMMA=1.4)
+                                      A_SOFT_VALUES="3 1\n0.3", GAMMA=1.4)
         self.assertEqual(len(cases), 3)
         manifest = Path(next(line.removeprefix("Wrote manifest ") for line in proc.stdout.splitlines()
                              if line.startswith("Wrote manifest ")))
         self.assertEqual(manifest.read_text().splitlines(), list(map(str, cases)))
         common_ini = []
         for case in cases:
-            self.assertEqual(float(summary(case)["sink_radius"]), 0)
+            self.assertNotIn("sink_radius", summary(case))
             ini_lines = (case / "pluto.ini").read_text().splitlines()
-            self.assertEqual(float(next(line.split()[1] for line in ini_lines if line.startswith("SINK_RADIUS "))), 0)
+            self.assertFalse(any(line.startswith("SINK_") for line in ini_lines))
             common_ini.append([line for line in ini_lines if not line.startswith("RSOFT ")])
         self.assertEqual(common_ini[0], common_ini[1])
         self.assertEqual(common_ini[1], common_ini[2])
+
+    def test_removed_sink_options_fail_before_creating_cases(self):
+        for script in ("prepare_one_case_3d.sh", "prepare_mach_sweep_3d.sh",
+                       "prepare_softening_sweep_3d.sh"):
+            for option in ("SINK_RADIUS", "SINK_TIMESCALE", "SINK_TAPER_POWER",
+                           "SINK_RHO_FLOOR", "SINK_VELOCITY_FACTOR"):
+                for value in ("", "0", "0.1"):
+                    with self.subTest(script=script, option=option, value=value):
+                        proc, _ = self.run_script(script, ok=False, **{option: value})
+                        self.assertIn(option + " is no longer supported", proc.stderr)
+                        self.assertFalse((self.root / "runs").exists())
 
     def test_sweep_rejects_invalid_or_ambiguous_list(self):
         for params in ({"A_SOFT_VALUES": ""}, {"A_SOFT_VALUES": "1 0"},

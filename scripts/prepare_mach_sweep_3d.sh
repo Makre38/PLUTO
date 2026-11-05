@@ -5,6 +5,14 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd "${script_dir}/.." && pwd)"
 
+# Removed sink options must not silently turn an old setup into a new model.
+for removed_option in SINK_RADIUS SINK_TIMESCALE SINK_TAPER_POWER SINK_RHO_FLOOR SINK_VELOCITY_FACTOR; do
+  if [[ -v "${removed_option}" ]]; then
+    echo "${removed_option} is no longer supported: the absorbing sink was removed. Unset all SINK_* options for new cases; preserve old runs separately." >&2
+    exit 1
+  fi
+done
+
 mach_min="${MACH_MIN:-0.1}"
 mach_max="${MACH_MAX:-1.1}"
 mach_step="${MACH_STEP:-0.5}"
@@ -36,9 +44,6 @@ if [[ -v A_SOFT ]]; then
 elif [[ -v RSOFT_FRAC ]]; then
   softening_env+=("RSOFT_FRAC=${RSOFT_FRAC}")
 fi
-sink_radius="${SINK_RADIUS:-0.0}"
-sink_timescale="${SINK_TIMESCALE:-0.0}"
-sink_taper_power="${SINK_TAPER_POWER:-2.0}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
 mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
@@ -56,11 +61,7 @@ runs_dir="${RUNS_DIR:-${repo_dir}/runs_3d}"
 manifest_dir="${runs_dir}/manifests"
 mkdir -p "${manifest_dir}"
 
-manifest_suffix=""
-if awk -v r="${sink_radius}" 'BEGIN { exit !(r > 0.0) }'; then
-  manifest_suffix="_sink${sink_radius}_tau${sink_timescale}_taper${sink_taper_power}"
-fi
-manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${softening_suffix}${manifest_suffix}.txt"
+manifest_name="mach${mach_min}-${mach_max}_step${mach_step}_mp${mp}_ll${log_lambda_max}_rbhl${cells_per_rbhl}_3d${softening_suffix}.txt"
 manifest_path="${manifest_dir}/${manifest_name}"
 if [[ -v A_SOFT ]]; then
   manifest_path="$(mktemp "${manifest_dir}/${manifest_name%.txt}.XXXXXX.txt")"
@@ -79,9 +80,6 @@ while IFS= read -r mach; do
     GAMMA="${gamma}" \
     RHO0="${rho0}" \
     CS0="${cs0}" \
-    SINK_RADIUS="${sink_radius}" \
-    SINK_TIMESCALE="${sink_timescale}" \
-    SINK_TAPER_POWER="${sink_taper_power}" \
     CS_ALERT_THRESHOLD="${cs_alert_threshold}" \
     CS_ALERT_EVERY_STEPS="${cs_alert_every_steps}" \
     MACH_ALERT_THRESHOLD="${mach_alert_threshold}" \

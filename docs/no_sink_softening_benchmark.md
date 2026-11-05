@@ -2,6 +2,18 @@
 
 Last updated: 2026-10-05
 
+## Current Interface (2026-11-05)
+
+The sink feature has now been removed on `dev/remove-sink`; all new cases are
+non-accreting. Omit `SINK_RADIUS=0` from the historical commands below. All
+removed sink environment options are rejected, even zero/empty values.
+There are no sink logs in new cases. For current verification, check that
+no such logs or parameters are generated. The implementation/verification
+record below describes the original benchmark and is retained as history.
+Existing run snapshots and summaries remain analyzable; do not replace old
+source/definitions while retaining an old parameter file. See README for
+compatibility instructions. Softening sensitivity remains unverified.
+
 ## Status
 
 | Stage | Status |

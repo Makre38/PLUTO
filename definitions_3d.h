@@ -7,7 +7,7 @@
 #define  TIME_STEPPING                  RK2
 #define  NTRACER                        0
 #define  PARTICLES                      NO
-#define  USER_DEF_PARAMETERS            16
+#define  USER_DEF_PARAMETERS            13
 
 /* -- physics dependent declarations -- */
 
@@ -19,7 +19,7 @@
 #define  VISCOSITY                      NO
 #define  RADIATION                      NO
 #define  ROTATING_FRAME                 NO
-#define  INTERNAL_BOUNDARY              YES
+#define  INTERNAL_BOUNDARY              NO
 
 /* -- user-defined parameters (labels) -- */
 
@@ -32,13 +32,10 @@
 #define  X1P                            6
 #define  X2P                            7
 #define  X3P                            8
-#define  SINK_RADIUS                    9
-#define  SINK_TIMESCALE                 10
-#define  SINK_TAPER_POWER               11
-#define  CS_ALERT_THRESHOLD             12
-#define  CS_ALERT_EVERY_STEPS           13
-#define  MACH_ALERT_THRESHOLD           14
-#define  MACH_ALERT_EVERY_STEPS         15
+#define  CS_ALERT_THRESHOLD             9
+#define  CS_ALERT_EVERY_STEPS           10
+#define  MACH_ALERT_THRESHOLD           11
+#define  MACH_ALERT_EVERY_STEPS         12
 
 /* [Beg] user-defined constants (do not change this line) */
 

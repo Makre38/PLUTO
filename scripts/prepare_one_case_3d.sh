@@ -5,6 +5,14 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_dir="$(cd "${script_dir}/.." && pwd)"
 
+# Removed sink options must not silently turn an old setup into a new model.
+for removed_option in SINK_RADIUS SINK_TIMESCALE SINK_TAPER_POWER SINK_RHO_FLOOR SINK_VELOCITY_FACTOR; do
+  if [[ -v "${removed_option}" ]]; then
+    echo "${removed_option} is no longer supported: the absorbing sink was removed. Unset all SINK_* options for new cases; preserve old runs separately." >&2
+    exit 1
+  fi
+done
+
 mach="${MACH:-0.1}"
 mp="${MP:-1.0}"
 log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
@@ -22,9 +30,6 @@ softening_mode=legacy
 a_soft_input="${A_SOFT-}"
 [[ -v A_SOFT ]] && softening_mode=asoft
 rsoft_frac="${RSOFT_FRAC:-0.25}"
-sink_radius="${SINK_RADIUS:-0.0}"
-sink_timescale="${SINK_TIMESCALE:-0.0}"
-sink_taper_power="${SINK_TAPER_POWER:-2.0}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
 mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
@@ -52,9 +57,6 @@ derived="$(awk -v mach="${mach}" \
               -v softening_mode="${softening_mode}" \
               -v a_soft_input="${a_soft_input}" \
               -v rsoft_frac="${rsoft_frac}" \
-              -v sink_radius="${sink_radius}" \
-              -v sink_timescale="${sink_timescale}" \
-              -v sink_taper_power="${sink_taper_power}" \
               -v margin_up="${margin_up}" \
               -v margin_down="${margin_down}" \
               -v margin_y="${margin_y}" \
@@ -136,9 +138,6 @@ BEGIN {
   case_name = sprintf("mach%.3f_mp%.3f_ll%.3f_rbhl%.1f_3d", mach, mp, log_lambda_max, cells_per_rbhl)
   if (softening_mode == "asoft") case_name = sprintf("%s_asoft%.17g", case_name, a_soft_input)
   if (cs0 != 1.0) case_name = sprintf("%s_cs%.17g", case_name, cs0)
-  if (sink_radius > 0.0) {
-    case_name = sprintf("%s_sink%.3g_tau%.3g_taper%.3g", case_name, sink_radius, sink_timescale, sink_taper_power)
-  }
 
   printf("r_bondi=%.17g\n", r_bondi)
   printf("rbhl=%.17g\n", rbhl)
@@ -261,9 +260,6 @@ RSOFT                       ${rsoft}
 X1P                         0.0
 X2P                         0.0
 X3P                         0.0
-SINK_RADIUS                 ${sink_radius}
-SINK_TIMESCALE              ${sink_timescale}
-SINK_TAPER_POWER            ${sink_taper_power}
 CS_ALERT_THRESHOLD          ${cs_alert_threshold}
 CS_ALERT_EVERY_STEPS        ${cs_alert_every_steps}
 MACH_ALERT_THRESHOLD        ${mach_alert_threshold}
@@ -284,9 +280,6 @@ rsoft_over_rbhl = ${rsoft_over_rbhl}
 tmax = ${tmax}
 vinf = ${vinf}
 rsoft = ${rsoft}
-sink_radius = ${sink_radius}
-sink_timescale = ${sink_timescale}
-sink_taper_power = ${sink_taper_power}
 cs_alert_threshold = ${cs_alert_threshold}
 cs_alert_every_steps = ${cs_alert_every_steps}
 mach_alert_threshold = ${mach_alert_threshold}

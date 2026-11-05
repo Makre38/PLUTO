@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-10-21 (axial alpha profile design and documentation links)
+Last updated: 2026-11-05 (sink removal and configuration compatibility)
 
 ## Physical Setup
 
@@ -29,8 +29,12 @@ Last updated: 2026-10-21 (axial alpha profile design and documentation links)
   parameters are explicitly supplied. Preserve legacy `CS0=1` generation.
 - The original implementation retained the sink and forced `SINK_RADIUS=0`
   in the dedicated softening sweep. On 2026-10-20 the user requested removal
-  of the sink feature; this supersedes the retention policy. Removal is
-  planned, not implemented. The gravitational perturber and softening remain.
+  of the sink feature; this supersedes the retention policy. Removal was
+  implemented on 2026-11-05 on `dev/remove-sink`: no fluid relaxation, sink
+  parameters or sink logs remain in new cases. All removed sink environment
+  options are rejected before generation, including zero/empty values. Old
+  source/configuration sets and output are preserved; analysis accepts old
+  summary fields. The gravitational perturber and softening remain.
 - Record derived scales, actual cells per radius, and all boundary distances
   relative to softening. Default warning thresholds (2 cells per radius,
   4 radii to a boundary) are configurable numerical heuristics. Do not resize

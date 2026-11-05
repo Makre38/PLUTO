@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-11-05 (user-reported no-sink and CFL results)
+Last updated: 2026-11-05 (sink removal and local baseline comparison)
 
 Latest test update (2026-11-05): the user confirms no-sink calculations do
 not break down, and results are nearly unchanged when varying CFL within
@@ -24,14 +24,15 @@ settings with each run. Its schema and override/compatibility rules are pending.
 The gravitational perturber and variable softening are to remain.
 The [feature plan](next_actions.md#requested-feature-changes-2026-10-20)
 records scope, unresolved design choices, and future verification.
-The first alpha plotting implementation is now on `dev/alpha-plot`:
+The first alpha plotting implementation is merged into local `main`:
 `plot_alpha_profile_3d.jl` selects the nearest saved log Lambda and writes a
 PNG plus numerical table for the x-axis through the perturber, interpolating
 transversely and reading only the required density rows. Other axes, 2D alpha
 slices, and time animations are not included in this first version.
-Velocity-gradient inflow, sink removal, and file-based setup remain planned.
-The sink and existing plotting/inflow implementations are still present.
-Earlier sink-tuning plans are superseded.
+The absorbing sink has been removed on `dev/remove-sink`. Velocity-gradient
+inflow and file-based setup remain planned; TOML setup is the next feature.
+Existing plotting and uniform inflow remain. Earlier sink-tuning plans are
+superseded.
 
 ## Project Aim
 
@@ -62,10 +63,10 @@ quantitative comparison and final study should be treated as 3D problems.
   - `A_SOFT = r_B/r_soft` controls softening independently of Mach
   - corrected arbitrary-`CS0` Bondi/BHL scales, derived-scale metadata and
     resolution/boundary warnings in `prepare_one_case_3d.sh`
-  - matched cases with `SINK_RADIUS=0` via `prepare_softening_sweep_3d.sh`
+  - matched non-accreting cases via `prepare_softening_sweep_3d.sh`
   - radial cumulative and shell forces for both point and softened kernels
     via `force_radial_profile_3d.jl`
-  - existing PLUTO gravity, optional sink, and one-case force semantics preserved
+  - PLUTO gravity, softening and one-case force semantics preserved; sink removed
 
 - 2D Cartesian PLUTO setup:
   - uniform inflow
@@ -126,11 +127,22 @@ quantitative comparison and final study should be treated as 3D problems.
   factors have not been tested, and initial energy cancellation is not established.
   The original run used `r_soft=0.2475*r_B`, about two cells per softening
   radius, and no sink. See the [comparison record](no_sink_softening_benchmark.md#2026-10-05-user-reported-cfl-comparison).
-- The 3D central sink is now a smooth absorbing sink rather than the older top-hat reset: inside `SINK_RADIUS`, density and pressure relax toward the initial ambient state and all velocity components relax toward zero with a tapered `alpha(r)`.
+- The central absorbing sink, its three active parameters and its runtime logs
+  have been removed. INTERNAL_BOUNDARY is disabled; the inflow boundary and
+  sound-speed/Mach diagnostics are preserved. Removed sink environment
+  options are rejected, and old output remains analyzable.
 
 ## Verification Status
 
 Verified locally:
+
+- On 2026-11-05, sink-removal verification passed: 10 generator tests,
+  69 radial-force assertions and 51 alpha-profile assertions. Old sink-disabled
+  and new no-sink serial cases compiled and ran 10 steps on the same 612-cell
+  grid at CFL=0.2. All 11 full-variable snapshots and dbl.out were byte-identical.
+  Alpha and radial-force analyses matched exactly across old/new metadata.
+  All 13 parameter indices matched generated labels; low-threshold runtime
+  checks emitted both sound-speed and Mach alerts with no sink logs.
 
 - On 2026-10-21, all 51 alpha-profile assertions passed, covering log-Lambda
   selection, off-center and exact-center interpolation, signed alpha,
@@ -174,10 +186,10 @@ Verified locally:
 
 Partially verified or not yet verified:
 
-- Remote execution is partially documented by the user-reported CFL comparison;
-  the `0.2` run's reached time and completion are unconfirmed. Systematic
-  build/serial/MPI verification, production softening sweeps, long-time
-  stability, and wake/force convergence remain unverified.
+- The user reports stable no-sink runs and nearly unchanged results for tested
+  CFL values below `1/dim`. Detailed run records/tolerances and systematic
+  remote/MPI verification are still missing. Softening sweeps and physical
+  wake/force convergence remain unverified.
 
 - Full PNG generation from `sweep_force_plot.jl` was not verified locally because the local Julia environment lacks `Plots`.
 - Remote verification of updated 3D sweep plotting should be done after relevant jobs finish.
@@ -185,7 +197,8 @@ Partially verified or not yet verified:
 - Sensitivity of force results to the inner cutoff choice has not been measured.
 - The full 3D Mach sweep comparison against the Ostriker model remains open.
 - The pressure-collapse mechanism has not yet been captured by a dedicated pressure/internal-energy runtime alert.
-- The smooth absorbing sink has only been locally smoke-tested; it has not yet been tested on a production 3D failure case or used for force interpretation.
+- Historical sink-enabled runs retain their original fluid model and must be
+  distinguished from new non-accreting cases.
 
 ## Known Issues And Risks
 
@@ -206,5 +219,6 @@ Partially verified or not yet verified:
 - Earlier near-isothermal tests such as `gamma = 1.00001` did not show the same
   failure mode, but EOS and other factors have not been varied in the latest
   CFL-only comparison. The generator still defaults to `CFL=0.4`.
-- The smooth absorbing sink is a numerical and physical modeling choice. Its influence may propagate into the downstream wake, so force results need sensitivity checks against `SINK_RADIUS`, `SINK_TIMESCALE`, and the relation between `r_sink` and `r_cut`.
+- Do not mix an old sink parameter file with new source/definitions. Preserve
+  the original case for historical reruns and generate fresh non-accreting cases.
 - Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.
