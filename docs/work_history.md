@@ -418,3 +418,10 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Documentation: removed the outdated “planning only” feature heading, updated its incoming anchors, and recorded implementation/verification separately from the remaining feature plans. Checked links and whitespace.
 - Not verified: production-size/end-to-end remote plotting, evolved production-wake interpretation, force/physical convergence, multiple-file snapshots, and additional plotting axes/modes. Other requested features remain planned. Changes are uncommitted; no push or merge was performed.
 - Next steps: review and commit this branch, then apply the documented command to a positive-time production snapshot. Keep that physical inspection separate from the completed numeric and small-run rendering checks.
+
+## 2026-11-05 - No-Sink And CFL Test Results Clarification
+
+- User-reported results: no-sink calculations do not break down; varying CFL below `1/dim` gave nearly unchanged results in the tested conditions. Individual run settings, paths, reached times and quantitative tolerances were not provided or independently checked here.
+- Correction: softening sensitivity remains unverified; the recollection of weak dependence concerned CFL, not softening.
+- Decision: study a non-accreting perturber; remove the sink first, implement TOML setup next, and introduce velocity gradients afterwards. Retain gravity, softening controls and diagnostics.
+- Verification: reviewed these documentation changes against the user's clarification and checked whitespace. No simulations were rerun for this report.

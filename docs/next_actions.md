@@ -2,6 +2,13 @@
 
 Last updated: 2026-10-21 (axial alpha plot verification; other features planned)
 
+Implementation priority (2026-11-05): sink removal, then TOML-based setup,
+then transverse velocity gradients. The user confirms stable no-sink runs
+and nearly unchanged results for tested CFL values below `1/dim`; softening
+sensitivity is still unverified. See the
+[updated test report](no_sink_softening_benchmark.md#2026-11-05-user-reported-no-sink-and-cfl-results).
+This supersedes earlier continuation-only CFL notes below.
+
 ## Research Stages Toward The Final Goal
 
 The final goal is to measure DF and the transverse gravitational force on the

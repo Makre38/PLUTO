@@ -1,14 +1,15 @@
 # Current Status
 
-Last updated: 2026-10-21 (axial alpha profile verification)
+Last updated: 2026-11-05 (user-reported no-sink and CFL results)
 
-Current handoff: implementation `5e1472a` and the documentation update
-`19d785a` have been merged into local `main`. Local regression and serial smoke checks
-passed. **The user reports that changing only CFL allowed the `0.2` run to
-continue while the `0.4` run stopped.** Completion of the `0.2` run, other
-numerical factors, and systematic remote/MPI verification remain unconfirmed. See the
-[benchmark handoff](no_sink_softening_benchmark.md) for the work summary and
-pending verification procedure.
+Latest test update (2026-11-05): the user confirms no-sink calculations do
+not break down, and results are nearly unchanged when varying CFL within
+`CFL < 1/dim` in the tested conditions. Detailed run records and tolerances
+were not supplied here. Softening sensitivity remains unverified. See the
+[updated test report](no_sink_softening_benchmark.md#2026-11-05-user-reported-no-sink-and-cfl-results).
+Implementation order: remove the sink, add TOML setup, then velocity gradients.
+Earlier CFL continuation-only notes below are historical and are superseded
+by this report; systematic MPI and physical-convergence checks remain open.
 
 ## Requested Work And Implementation Status
 

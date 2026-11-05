@@ -23,6 +23,26 @@ Its original text is preserved in commit `5e1472a`. Durable choices also appear
 in [decisions.md](decisions.md), and the detailed implementation record is in
 [work_history.md](work_history.md).
 
+## 2026-11-05: User-Reported No-Sink And CFL Results
+
+The user confirms that calculations run without breaking down with the sink
+disabled. In the tested conditions, changing CFL within `CFL < 1/dim` gave
+nearly unchanged calculation results. The tested values, run paths, completion
+times, comparison quantities and numerical tolerances were not supplied in
+this session; these are user-reported results, not independently rechecked
+production-run results. This updates the earlier report that only the
+`CFL=0.2` run's continuation was known. It does not establish general stability
+or physical convergence outside the tested conditions.
+
+Softening-length sensitivity remains unverified. The earlier recollection
+that softening had little effect was a confusion with the CFL comparison.
+Keep softening controls, sweeps and radial force diagnostics.
+
+The intended model is a non-accreting gravitational perturber. Remove the
+absorbing sink feature, then implement TOML-based setup, and only afterwards
+introduce a transverse velocity gradient. Sink removal is a modeling and
+maintenance decision, not a conclusion that softening is unimportant.
+
 ## Purpose And Constraints
 
 The user observed an artificial-looking downstream hole with the smooth sink.
