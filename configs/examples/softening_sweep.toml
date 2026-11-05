@@ -1,0 +1,16 @@
+schema_version = 1
+
+[physics]
+mach = 0.5
+gamma = 1.6666
+
+[time]
+log_lambda_max = 1.0
+cfl = 0.333
+
+[output]
+runs_dir = "../../runs_3d_softening_toml"
+
+[sweep]
+parameter = "softening.a_soft"
+values = [10.0, 3.0, 1.0, 0.3, 0.1]

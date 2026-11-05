@@ -1,0 +1,18 @@
+schema_version = 1
+
+[physics]
+gamma = 1.6666
+
+[softening]
+a_soft = 4.0
+
+[time]
+log_lambda_max = 1.0
+cfl = 0.333
+
+[output]
+runs_dir = "../../runs_3d_mach_toml"
+
+[sweep]
+parameter = "physics.mach"
+values = [0.1, 0.3, 0.5, 0.7, 0.9, 1.1]

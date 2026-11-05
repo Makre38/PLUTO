@@ -54,6 +54,28 @@ Julia scripts:
 
 ## Typical workflows
 
+### Prepare 3D cases from TOML
+
+Requires Python 3.11+ (standard library only). Preparation does not build,
+run or submit jobs. Examples and the complete specification are in
+[docs/toml_setup.md](docs/toml_setup.md).
+
+```bash
+bash scripts/prepare_from_toml.sh configs/examples/single.toml
+bash scripts/prepare_from_toml.sh configs/examples/mach_sweep.toml
+bash scripts/prepare_from_toml.sh configs/examples/softening_sweep.toml
+```
+
+Copy an example into ignored `configs/local/` for personal trials. Relative
+`output.runs_dir` paths are resolved against the TOML directory. Each case
+contains `setup.original.toml`, `setup.effective.toml` and `run_summary.txt`.
+Existing case directories are never overwritten by this interface. Sweep
+manifests list individual cases that can be independently run or submitted
+with the existing scripts. Inherited simulation environment variables do not
+override TOML; environment-variable preparation remains a separate interface.
+The default CFL is 0.333; Mach alerts are disabled by default. Set a positive
+Mach threshold to enable them; the sound-speed default remains 1e-6.
+
 ### Prepare one case
 
 ```bash
@@ -77,7 +99,7 @@ minimum local sound speed falls below `CS_ALERT_THRESHOLD`, the code writes the
 cell location and local state to `logs/diagnostics_cs_alert_3d.rankNNNN.dat` and the runtime
 log. If the maximum local Mach number exceeds `MACH_ALERT_THRESHOLD`, it writes
 to `logs/diagnostics_mach_alert_3d.rankNNNN.dat` and the runtime log. The default
-thresholds are `CS_ALERT_THRESHOLD=1.0e-6` and `MACH_ALERT_THRESHOLD=10.0`; set
+thresholds are `CS_ALERT_THRESHOLD=1.0e-6` and `MACH_ALERT_THRESHOLD=0.0`; set
 either threshold to `0.0` to disable that diagnostic. `CS_ALERT_EVERY_STEPS` and
 `MACH_ALERT_EVERY_STEPS` control repeated alert logging while a condition
 persists. The perturber is non-accreting: there is no central absorbing sink or

@@ -18,6 +18,7 @@ mp="${MP:-1.0}"
 log_lambda_max="${LOG_LAMBDA_MAX:-2.0}"
 cells_per_rbhl="${CELLS_PER_RBHL:-2.0}"
 n_output="${N_OUTPUT:-20}"
+cfl="${CFL:-0.333}"
 
 gamma="${GAMMA:-1.6666}"
 rho0="${RHO0:-1.0}"
@@ -32,7 +33,7 @@ a_soft_input="${A_SOFT-}"
 rsoft_frac="${RSOFT_FRAC:-0.25}"
 cs_alert_threshold="${CS_ALERT_THRESHOLD:-1.0e-6}"
 cs_alert_every_steps="${CS_ALERT_EVERY_STEPS:-1}"
-mach_alert_threshold="${MACH_ALERT_THRESHOLD:-10.0}"
+mach_alert_threshold="${MACH_ALERT_THRESHOLD:-0.0}"
 mach_alert_every_steps="${MACH_ALERT_EVERY_STEPS:-1}"
 
 margin_up="${MARGIN_UP:-1.2}"
@@ -53,6 +54,7 @@ derived="$(awk -v mach="${mach}" \
               -v log_lambda_max="${log_lambda_max}" \
               -v cells_per_rbhl="${cells_per_rbhl}" \
               -v n_output="${n_output}" \
+              -v cfl="${cfl}" \
               -v cs0="${cs0}" \
               -v softening_mode="${softening_mode}" \
               -v a_soft_input="${a_soft_input}" \
@@ -92,6 +94,7 @@ BEGIN {
   number("CS0", cs0, 1)
   number("LOG_LAMBDA_MAX", log_lambda_max, 0)
   number("CELLS_PER_RBHL", cells_per_rbhl, 1)
+  number("CFL", cfl, 1)
   number("N_OUTPUT", n_output, 1)
   if (n_output != int(n_output)) fail("N_OUTPUT must be an integer")
   number("MARGIN_UP", margin_up, 1)
@@ -209,7 +212,7 @@ X3-grid    1    ${zmin}    ${nz}    u    ${zmax}
 
 [Time]
 
-CFL              0.333
+CFL              ${cfl}
 CFL_max_var      1.1
 tstop            ${tmax}
 first_dt         1.e-4
@@ -287,6 +290,7 @@ mach_alert_every_steps = ${mach_alert_every_steps}
 cs0 = ${cs0}
 rho0 = ${rho0}
 gamma = ${gamma}
+cfl = ${cfl}
 dx_target = ${dx_target}
 dx_actual = ${dx_actual}
 dy_actual = ${dy_actual}

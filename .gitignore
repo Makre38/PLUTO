@@ -8,3 +8,5 @@ tests/
 ./rsync_from_trinity.sh
 
 AGENTS.md
+
+/configs/local/
