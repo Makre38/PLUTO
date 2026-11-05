@@ -95,14 +95,16 @@ future option.
 
 - Implemented on `dev/toml-setup` in `e0f1a14`. See [toml_setup.md](toml_setup.md)
   for the confirmed schema, defaults, examples, validation and record format.
-- Python 3.11+ standard library only; use `bash scripts/prepare_from_toml.sh FILE`.
+  The initial Python loader/tests have been replaced by Julia. The readable
+  [test report](test_reports/toml_setup_julia.md) describes every scenario.
+- Julia standard library only; use `bash scripts/prepare_from_toml.sh FILE`.
   3D single cases and one-parameter Mach/softening lists reuse the existing
   generator. Execution, MPI and Slurm remain separate.
 - Original/effective configuration and provenance are saved per case. Existing
   destinations, unknown keys, conflicts and invalid values are rejected before
   publication. Personal files belong in ignored `configs/local/`.
 - Local integration/regression checks and a 10-step serial run passed. Remote
-  Python availability, MPI/Slurm execution and production studies remain open.
+  Julia availability, MPI/Slurm execution and production studies remain open.
 - Further options (2D, multiple sweep axes, per-key CLI overrides and execution
   profiles) are outside this first version. Velocity-profile design is next.
 

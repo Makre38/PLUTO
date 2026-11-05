@@ -3,7 +3,7 @@
 ## Agreed interface (2026-11-05)
 
 - Scope: 3D single cases and one-parameter Mach or softening sweeps. Preparation only; existing execution and Slurm scripts remain independent.
-- Entry point: `bash scripts/prepare_from_toml.sh SETUP.toml`, backed by Python 3.11+ standard-library `tomllib`.
+- Entry point: `bash scripts/prepare_from_toml.sh SETUP.toml`, backed by Julia's standard-library `TOML`.
 - Tables: `physics` (mach, gamma, mass, density, sound_speed), `softening` (a_soft or rsoft_frac), `grid` (cells_per_rbhl, margin_up, margin_down, margin_y, upstream_min), `time` (log_lambda_max, cfl), `output` (count, runs_dir, subdir), `limits` (warn_cells, hard_cells, min_cells_per_rsoft, min_boundary_over_rsoft), and `diagnostics` (sound_speed_threshold, sound_speed_every_steps, mach_threshold, mach_every_steps).
 - `schema_version = 1` is required. Other settings may be omitted and use recorded defaults. Softening defaults to legacy rsoft_frac=0.25 when neither interface is selected.
 - Optional `sweep`: `parameter = "physics.mach"` or `"softening.a_soft"`, and a nonempty numeric `values` list. Reject duplicates and conflicts with fixed values; no Cartesian product or range syntax in this version.
@@ -68,5 +68,30 @@ successfully published cases. Source configuration is never read at execution
 time, so individual cases can be rerun/submitted independently.
 
 ```bash
-python3 tests/test_toml_setup.py -v
+julia --startup-file=no tests/test_toml_setup.jl
 ```
+
+## Julia implementation and readable verification (2026-11-05)
+
+The preparation implementation and its new tests have been rewritten in Julia.
+`scripts/prepare_from_toml.jl` uses the standard `TOML` library; the shell entry
+point invokes Julia with `--startup-file=no`. No Python is needed for this
+interface. The existing older `tests/test_softening_generation.py` is separate
+historical code and was not rewritten in this step.
+
+The Julia test suite prints what each scenario checks and its PASS/FAIL result,
+and saves [a Markdown report](test_reports/toml_setup_julia.md) by default.
+The report includes the execution time, Julia version, Git revision, dirty-state
+flag, scenario descriptions and any failure details. It is written on assertion
+failures too; a failing suite exits nonzero. The default report is replaced on
+each run, so use a different path when preserving multiple executions:
+
+```bash
+julia --startup-file=no tests/test_toml_setup.jl --report /tmp/toml-check.md
+```
+
+The suite checks generation and validation, not PLUTO physics. Serial smoke
+verification is recorded separately in the session handoff and the runtime
+report. The existing numerical Julia suites retain their normal Test summaries;
+[the numerical verification record](test_reports/toml_julia_runtime.md) explains
+what was run. AGENTS.md policy changes are deferred to a later task.

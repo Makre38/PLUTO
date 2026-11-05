@@ -119,3 +119,7 @@ Last updated: 2026-11-05 (sink removal and configuration compatibility)
 ## TOML Setup Specification (2026-11-05)
 
 The confirmed first-version interface is recorded in [toml_setup.md](toml_setup.md). It supersedes the earlier open design candidates: generation-only 3D setup, one-parameter lists, no inherited simulation overrides, original/effective records, and separate execution.
+
+## Julia implementation policy clarification (2026-11-05)
+
+The TOML loader and its tests use Julia and standard-library TOML, replacing the initial Python implementation. Tests must describe their checks and save a readable result report. The user intends to add a repository-wide Julia preference and confirmation requirement for other languages to AGENTS.md later; no AGENTS.md changes are part of this step.

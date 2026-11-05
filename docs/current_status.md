@@ -32,7 +32,7 @@ transversely and reading only the required density rows. Other axes, 2D alpha
 slices, and time animations are not included in this first version.
 The absorbing sink has been removed on `dev/remove-sink`. Velocity-gradient
 inflow remains planned. TOML setup is implemented on `dev/toml-setup`
-(commit `e0f1a14`); see [the specification and usage](toml_setup.md).
+(initial commit `e0f1a14`, now rewritten in Julia); see [the specification and usage](toml_setup.md).
 Existing plotting and uniform inflow remain. Earlier sink-tuning plans are
 superseded.
 
@@ -138,7 +138,13 @@ quantitative comparison and final study should be treated as 3D problems.
 
 Verified locally:
 
-- TOML implementation: 6 integration tests and all 10 legacy generation tests
+- Julia rewrite: 29 described TOML scenarios passed, together with 69 radial
+  and 51 alpha-profile assertions. Readable reports and commands are in
+  [test_reports/toml_setup_julia.md](test_reports/toml_setup_julia.md) and
+  [test_reports/toml_julia_runtime.md](test_reports/toml_julia_runtime.md).
+  Python is no longer required for TOML generation or its new tests.
+
+- Initial Python TOML implementation: 6 integration tests and all 10 legacy generation tests
   passed, as did 69 radial and 51 alpha-profile Julia assertions. A 612-cell
   TOML-generated serial case compiled and ran 10 steps at CFL=0.2. Sound-speed
   alerts repeated every 2 steps and Mach alerts every 3 as configured. Cases

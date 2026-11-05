@@ -56,7 +56,7 @@ Julia scripts:
 
 ### Prepare 3D cases from TOML
 
-Requires Python 3.11+ (standard library only). Preparation does not build,
+Uses Julia and its standard-library TOML parser; no additional packages. Preparation does not build,
 run or submit jobs. Examples and the complete specification are in
 [docs/toml_setup.md](docs/toml_setup.md).
 
