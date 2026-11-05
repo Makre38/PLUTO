@@ -1,6 +1,6 @@
 # Next Actions
 
-Last updated: 2026-11-05 (sink removed; TOML setup next)
+Last updated: 2026-11-05 (TOML setup implemented)
 
 Implementation priority (2026-11-05): sink removal, then TOML-based setup,
 then transverse velocity gradients. The user confirms stable no-sink runs
@@ -35,7 +35,7 @@ current baseline-validation stage.
 
 Implementation status is recorded per item below. The first axial alpha
 plot is merged into local main and the sink is removed on `dev/remove-sink`.
-TOML setup and velocity gradients remain planned. A 2D alpha slice remains a
+TOML setup is implemented on `dev/toml-setup`; velocity gradients remain planned. A 2D alpha slice remains a
 future option.
 
 #### Density perturbation plots
@@ -88,48 +88,23 @@ future option.
 - Keep historical cases intact. Analyze their output normally; rerun old models
   only with the original source/definitions/parameter files together. Never
   reinterpret an old sink-enabled case as a new non-accreting case.
-- TOML setup is next, followed by transverse velocity gradients. Softening
+- TOML setup is implemented; transverse velocity gradients are next. Softening
   sensitivity remains a separate unverified numerical study.
 
 #### Simulation setup from a configuration file
 
-- Add a file-based setup interface so parameter exploration does not require
-  editing tracked shell scripts or retyping long environment/CLI assignments.
-  TOML is the preferred format candidate; the schema, parser, and command
-  interface remain to be selected. This is not implemented.
-- Let a short command select a setup file for preparation and subsequent
-  local or batch execution. Keep `pluto.ini` as the generated PLUTO input;
-  the setup file also describes generator-level controls and derived scales.
-- Cover physical parameters (Mach, gamma, mass, density, sound speed,
-  softening, and future velocity gradients), numerical controls (including
-  CFL), resolution/box/runtime controls, and output settings. Define which
-  build/MPI/Slurm settings belong in the file versus a machine-specific
-  configuration; avoid coupling physical cases to one cluster.
-- Track example configurations and selected reproducible benchmarks in Git.
-  Put personal trial configurations in a dedicated ignored directory; choose
-  its path and document how to promote a case into a tracked benchmark.
-  Parameter changes should not require changes to executable scripts.
-- Preserve the original setup file and the fully resolved effective settings
-  with each run, including defaults, overrides, derived quantities, and code
-  revision. Define relative-path resolution and existing-case/overwrite
-  behavior so repeated commands cannot silently change an earlier run.
-- Candidate precedence is explicit CLI overrides > file values > defaults.
-  Decide how existing environment-variable workflows remain compatible and
-  prevent inherited shell variables from silently overriding file values.
-  Record the chosen precedence and resolved values in the run metadata.
-- Validate types, ranges, unknown keys, and conflicting inputs (for example,
-  `A_SOFT` versus `RSOFT_FRAC`) before generating or launching a case. Reject
-  removed sink settings consistently with the generator interface.
-- Specify matched sweep lists and their expansion rules; preserve manifests
-  and per-case resolved settings. Decide initial 3D coverage and any 2D
-  compatibility explicitly. Reuse one configuration-resolution path across
-  preparation, local execution, and Slurm wrappers.
-- Likely scope: configuration loader/schema, generators and runner/submitter
-  interfaces, example files, `.gitignore`, metadata, documentation, and tests.
-- Future verification: equivalent legacy and file-based inputs produce the
-  same generated parameters; precedence, validation, relative paths, sweep
-  expansion, case preservation, and effective-setting records behave as
-  documented. Check a short local run and later the remote wrapper workflow.
+- Implemented on `dev/toml-setup` in `e0f1a14`. See [toml_setup.md](toml_setup.md)
+  for the confirmed schema, defaults, examples, validation and record format.
+- Python 3.11+ standard library only; use `bash scripts/prepare_from_toml.sh FILE`.
+  3D single cases and one-parameter Mach/softening lists reuse the existing
+  generator. Execution, MPI and Slurm remain separate.
+- Original/effective configuration and provenance are saved per case. Existing
+  destinations, unknown keys, conflicts and invalid values are rejected before
+  publication. Personal files belong in ignored `configs/local/`.
+- Local integration/regression checks and a 10-step serial run passed. Remote
+  Python availability, MPI/Slurm execution and production studies remain open.
+- Further options (2D, multiple sweep axes, per-key CLI overrides and execution
+  profiles) are outside this first version. Velocity-profile design is next.
 
 ### No-sink variable-softening benchmark: remote verification, then production validation
 
@@ -143,9 +118,9 @@ follow the [verification procedure](no_sink_softening_benchmark.md#remote-verifi
 using the new interface (no sink options or logs).
 
 Keep CFL fixed while testing resolution and softening. The generator still
-writes `CFL=0.4`; review this before production 3D runs. The removal comparison
-used CFL=0.2 by changing only temporary case input files. CFL configuration
-belongs in the upcoming TOML setup work.
+writes `CFL=0.333` by default and accepts explicit CFL input. The removal comparison
+used CFL=0.2 by changing only temporary case input files. CFL is configurable
+through the TOML interface.
 
 After remote smoke tests pass, proceed to numerical validation:
 

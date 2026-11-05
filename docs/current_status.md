@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-11-05 (sink removal and local baseline comparison)
+Last updated: 2026-11-05 (TOML setup implementation)
 
 Latest test update (2026-11-05): the user confirms no-sink calculations do
 not break down, and results are nearly unchanged when varying CFL within
@@ -18,9 +18,10 @@ On 2026-10-20 the user requested four changes: plotting raw
 perturber, with 2D slices still an option), a transverse velocity gradient
 at the inflow boundary, removal of the central absorbing sink, and simulation
 setup from a configuration file (TOML is the preferred candidate).
-The file interface should avoid script edits and repeated long commands,
-separate tracked examples from ignored trial setups, and retain effective
-settings with each run. Its schema and override/compatibility rules are pending.
+The file interface avoids script edits and repeated long commands, separates
+tracked examples from ignored trial setups, and retains original/effective
+settings per run. Schema version 1 supports single cases and one-parameter
+Mach/softening lists; inherited simulation environment variables are ignored.
 The gravitational perturber and variable softening are to remain.
 The [feature plan](next_actions.md#requested-feature-changes-2026-10-20)
 records scope, unresolved design choices, and future verification.
@@ -30,7 +31,8 @@ PNG plus numerical table for the x-axis through the perturber, interpolating
 transversely and reading only the required density rows. Other axes, 2D alpha
 slices, and time animations are not included in this first version.
 The absorbing sink has been removed on `dev/remove-sink`. Velocity-gradient
-inflow and file-based setup remain planned; TOML setup is the next feature.
+inflow remains planned. TOML setup is implemented on `dev/toml-setup`
+(commit `e0f1a14`); see [the specification and usage](toml_setup.md).
 Existing plotting and uniform inflow remain. Earlier sink-tuning plans are
 superseded.
 
@@ -136,6 +138,12 @@ quantitative comparison and final study should be treated as 3D problems.
 
 Verified locally:
 
+- TOML implementation: 6 integration tests and all 10 legacy generation tests
+  passed, as did 69 radial and 51 alpha-profile Julia assertions. A 612-cell
+  TOML-generated serial case compiled and ran 10 steps at CFL=0.2. Sound-speed
+  alerts repeated every 2 steps and Mach alerts every 3 as configured. Cases
+  preserve original/effective TOML, derived metadata and source revision.
+
 - On 2026-11-05, sink-removal verification passed: 10 generator tests,
   69 radial-force assertions and 51 alpha-profile assertions. Old sink-disabled
   and new no-sink serial cases compiled and ran 10 steps on the same 612-cell
@@ -218,7 +226,8 @@ Partially verified or not yet verified:
   whether pressure collapse initiates the failure or follows numerical instability.
 - Earlier near-isothermal tests such as `gamma = 1.00001` did not show the same
   failure mode, but EOS and other factors have not been varied in the latest
-  CFL-only comparison. The generator still defaults to `CFL=0.4`.
+  CFL-only comparison. The generator now defaults to `CFL=0.333` (user commit `4818541`),
+  with explicit CFL input supported by TOML and the environment interface.
 - Do not mix an old sink parameter file with new source/definitions. Preserve
   the original case for historical reruns and generate fresh non-accreting cases.
 - Simply increasing `cells_per_rbhl` is expensive in 3D because the total cell count scales roughly as the cube of the linear resolution. AMR or another local-refinement strategy should be investigated before relying on brute-force uniform-grid convergence.
