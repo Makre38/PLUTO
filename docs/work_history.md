@@ -436,3 +436,7 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Artifacts: `/tmp/pluto-remove-sink-3p7cfgvk` contains baseline/removed cases, build/run logs, radial tables and a separate diagnostic case; temporary files may not persist. These are I/O and behavior-preservation checks, not physical-convergence evidence.
 - Not verified: remote/MPI execution, production-size evolution, physical convergence and softening sensitivity. No PNG rerendering was needed because plotting code was untouched. Generator CFL=0.4 remains unchanged.
 - Next: review the sink-removal branch, merge only when instructed, then design and implement TOML setup before velocity gradients. TOML and velocity-gradient code are untouched. No push or merge was performed in this implementation step.
+
+## 2026-11-05 - TOML Specification
+
+- Recorded the confirmed schema, sweep rules, defaults, diagnostic settings, path resolution, compatibility, and verification scope in `toml_setup.md` before implementation. No code changes or tests in this step; checked whitespace. Implementation will branch from the current sink-removal/CFL work without merging it into main.

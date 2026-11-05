@@ -116,3 +116,7 @@ Last updated: 2026-11-05 (sink removal and configuration compatibility)
   - `prepare_*` generates case files and directories
   - `run_*` executes prepared cases locally
   - `submit_*` submits prepared cases to Slurm
+
+## TOML Setup Specification (2026-11-05)
+
+The confirmed first-version interface is recorded in [toml_setup.md](toml_setup.md). It supersedes the earlier open design candidates: generation-only 3D setup, one-parameter lists, no inherited simulation overrides, original/effective records, and separate execution.
