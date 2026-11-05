@@ -114,7 +114,7 @@ X3-grid    1    0.0    1    u    1.0
 
 [Time]
 
-CFL              0.4
+CFL              0.333
 CFL_max_var      1.1
 tstop            ${tmax}
 first_dt         1.e-4
