@@ -1,6 +1,6 @@
 # Next Actions
 
-Last updated: 2026-10-20 (planned feature changes and configuration-file setup)
+Last updated: 2026-10-21 (axial alpha plot verification; other features planned)
 
 ## Research Stages Toward The Final Goal
 
@@ -24,34 +24,29 @@ current baseline-validation stage.
 
 ## Near-Term Implementation
 
-### Requested feature changes (2026-10-20; planning only)
+### Requested feature changes (2026-10-20)
 
-The following work is requested but **not implemented**. This update only
-records the scope, open choices, and future verification. The preference for
-an axial profile is not a final decision to exclude 2D slices.
+Implementation status is recorded per item below. The first axial alpha
+plot is implemented on `dev/alpha-plot`; the other requested features remain
+plans. A 2D alpha slice remains a future option.
 
 #### Density perturbation plots
 
-- Add plots of `alpha(t, x) = rho(t, x)/rho0 - 1`, using the case's background
-  density `rho0`. Uniform gas must give zero; underdensities must remain negative.
-- Prefer a one-dimensional profile along an axis through the perturber as
-  the initial design candidate. Keep a two-dimensional slice through the
-  perturber as an alternative or optional view.
-- Existing `plot_3d_diagnostics.jl` density views use
-  `sign(alpha)*log10(1+abs(alpha))`. Label raw alpha separately so it is not
-  confused with that transformed quantity or with the sink relaxation factor.
-- Decide which axis to sample (flow direction first is a candidate; transverse
-  direction is useful for the later shear flow), snapshot/time selection,
-  coordinate normalization, and output format before implementation.
-- Define how a line through the actual perturber position is sampled when it
-  lies between cell centers: interpolation versus nearest-cell sampling must
-  be explicit, with sampled coordinates recorded.
-- Likely scope: `plot_3d_diagnostics.jl` or a dedicated profile script, shared
-  snapshot/metadata readers, usage documentation, and focused plotting tests.
-- Future verification: synthetic uniform and known signed density fields,
-  nonzero perturber coordinates and off-grid positions, agreement with the
-  corresponding slice, and one real-output plot. Account for large 3D files
-  when choosing how to read only the required data.
+- Implemented first version: `plot_alpha_profile_3d.jl RUN_DIR LOG_LAMBDA`
+  plots raw `alpha=rho/rho0-1` along x at `(y,z)=(y_p,z_p)`. It selects the
+  nearest positive-time snapshot in log Lambda and records the actual time.
+- Bilinear transverse interpolation uses at most four density rows; exact
+  cell-center locations use direct values. Output is PNG plus a `.dat` table
+  containing signed `x-x_p`, rho, alpha, and interpolation metadata.
+- Existing signed-log density slices are unchanged. Additional axes, 2D raw
+  alpha slices, coordinate normalization, and animations remain future options.
+- Verified locally on 2026-10-21: 51 numerical assertions, synthetic PNG/table
+  output, and extraction/rendering of positive-time output from a 612-cell
+  PLUTO smoke run. The real-data densities matched a full-volume reference.
+- Next validation: use positive-time production output to inspect the wake
+  and compare the profile with the corresponding interpolated slice. Synthetic
+  interpolation tests and successful rendering do not establish physical
+  convergence of the simulation.
 
 #### Transverse velocity gradient at the inflow boundary
 

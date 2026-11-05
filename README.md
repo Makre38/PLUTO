@@ -49,6 +49,8 @@ Julia scripts:
   - Visualize density snapshots.
 - `plot_3d_diagnostics.jl`
   - Plot 3D diagnostic slices through the perturber position, with `rsoft` and `rcut` overlays.
+- `plot_alpha_profile_3d.jl`
+  - Plot raw `alpha=rho/rho0-1` along the x-axis through the perturber at a requested `log Lambda`, and save the numerical profile.
 
 ## Typical workflows
 
@@ -308,6 +310,52 @@ writes an HTML player and PNG frames by default. Use `--stride N` and
 `--max-frames N` to limit animation size. The perturber marker and `rsoft` /
 `rcut` radius overlays are hidden by default; add `--show-overlays` to draw
 them.
+
+### Plot an axial density-perturbation profile
+
+```bash
+julia plot_alpha_profile_3d.jl RUN_DIR 2.0
+# Optional output name (the numerical table uses the same stem):
+julia plot_alpha_profile_3d.jl RUN_DIR 2.0 --output figures/alpha_ll2.png
+```
+
+The second argument is the requested `log Lambda = ln(t*cs0/r_BHL)`.
+The script selects the closest **positive-time** snapshot in log Lambda;
+it does not interpolate in time. A tie selects the first matching entry in
+`dbl.out`. Targets outside the available time range select the closest saved
+snapshot. Actual time, actual log Lambda, requested log Lambda, and snapshot
+index are shown in the plot and console/table metadata. An initial-only run
+cannot be plotted by this interface.
+
+The horizontal axis is the signed code-unit coordinate `x-x_p`. The vertical
+axis is raw `alpha=rho/rho0-1`, using the run's background `rho0`, with negative
+values retained and a zero reference line. This differs from the signed-log
+density view in `plot_3d_diagnostics.jl`.
+
+At each x cell center, density is interpolated in y and z to the line
+`(y,z)=(y_p,z_p)` from `run_summary.txt`. If the line lies on transverse cell
+centers, those values are used directly. For an even, origin-symmetric y/z
+grid, this is the average of the four surrounding rows. No extrapolation
+outside the transverse cell-center range is allowed; the table records the
+sampled indices, coordinates, and weights. There is no averaging along x.
+
+Outputs default to `RUN_DIR/alpha_profile_x.NNNN.png` and `.dat`, where
+`NNNN` is the selected snapshot index. Repeating a selection with the same
+output path replaces these files. The table has commented metadata followed
+by columns `x x_minus_xp rho alpha`. It can be transferred for further analysis
+without moving the full snapshot.
+
+This initial version supports 3D Cartesian PLUTO `single_file` double output
+with little or big endian storage. Only the required rho rows (at most four)
+are read using file offsets, so working data memory scales with `Nx`, not the
+3D volume. Nonfinite or negative density in sampled rows produces an error.
+Plots.jl is required for PNG rendering. Numeric tests do not load Plots:
+
+```bash
+julia --startup-file=no tests/test_alpha_profile_3d.jl
+# Also exercise the CLI and PNG output in an environment with Plots:
+GKSwstype=100 julia --startup-file=no tests/test_alpha_profile_3d.jl --plot
+```
 
 ## Drag sign convention
 

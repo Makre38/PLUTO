@@ -1,6 +1,6 @@
 # Decisions
 
-Last updated: 2026-10-20 (planned feature changes)
+Last updated: 2026-10-21 (axial alpha profile design and documentation links)
 
 ## Physical Setup
 
@@ -53,10 +53,14 @@ Last updated: 2026-10-20 (planned feature changes)
 
 ## Output And Analysis
 
-- Planned (2026-10-20): add raw density perturbation `alpha=rho/rho0-1`
-  plotting. An axis through the perturber is the preferred initial candidate;
-  a 2D slice remains an alternative. Axis choice and off-grid sampling are
-  not yet decided. Distinguish raw alpha from the existing signed-log view.
+- Alpha profile (2026-10-20): the first version plots raw `alpha=rho/rho0-1`
+  along x through the perturber, selecting the nearest positive-time snapshot
+  in requested log Lambda. Use bilinear interpolation in y/z from cell
+  centers, or direct values at exact centers; do not extrapolate. Preserve
+  signed alpha, use `x-x_p` in code units, and save PNG plus a numerical table
+  with actual time and interpolation metadata. Read only required density
+  rows. Additional axes, 2D alpha slices, and animations are future options.
+  Existing signed-log density views retain their meaning.
 - Use PLUTO `double` binary output for the current workflow.
 - Reconsider HDF5 only if richer metadata, 3D production data sharing, or a longer-lived analysis pipeline requires it.
 - Keep force calculation in Julia rather than PLUTO so diagnostics can be recomputed without rerunning simulations.
@@ -92,7 +96,7 @@ Last updated: 2026-10-20 (planned feature changes)
 - Planned (2026-10-20): support an inflow velocity gradient perpendicular
   to the flow, with zero gradient recovering the uniform baseline. Profile
   shape/strength and treatment of the initial domain remain undecided. See
-  [the feature plan](next_actions.md#requested-feature-changes-2026-10-20-planning-only).
+  [the feature plan](next_actions.md#requested-feature-changes-2026-10-20).
 - Generate `pluto.ini` separately for each run.
 - Control effective resolution by `cells_per_rbhl`, not directly by hand-written `Nx` and `Ny`.
 - Compute `r_BHL`, box size, total runtime, and grid size from a small set of physical and numerical controls.

@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-10-20 (planned feature changes)
+Last updated: 2026-10-21 (axial alpha profile verification)
 
 Current handoff: implementation `5e1472a` and the documentation update
 `19d785a` have been merged into local `main`. Local regression and serial smoke checks
@@ -10,7 +10,7 @@ numerical factors, and systematic remote/MPI verification remain unconfirmed. Se
 [benchmark handoff](no_sink_softening_benchmark.md) for the work summary and
 pending verification procedure.
 
-## Requested Work (Not Implemented)
+## Requested Work And Implementation Status
 
 On 2026-10-20 the user requested four changes: plotting raw
 `alpha=rho/rho0-1` (preferentially as a profile along an axis through the
@@ -21,10 +21,16 @@ The file interface should avoid script edits and repeated long commands,
 separate tracked examples from ignored trial setups, and retain effective
 settings with each run. Its schema and override/compatibility rules are pending.
 The gravitational perturber and variable softening are to remain.
-The [feature plan](next_actions.md#requested-feature-changes-2026-10-20-planning-only)
+The [feature plan](next_actions.md#requested-feature-changes-2026-10-20)
 records scope, unresolved design choices, and future verification.
-Only documentation has been updated; the sink and existing plotting/inflow
-implementations are still present. Earlier sink-tuning plans are superseded.
+The first alpha plotting implementation is now on `dev/alpha-plot`:
+`plot_alpha_profile_3d.jl` selects the nearest saved log Lambda and writes a
+PNG plus numerical table for the x-axis through the perturber, interpolating
+transversely and reading only the required density rows. Other axes, 2D alpha
+slices, and time animations are not included in this first version.
+Velocity-gradient inflow, sink removal, and file-based setup remain planned.
+The sink and existing plotting/inflow implementations are still present.
+Earlier sink-tuning plans are superseded.
 
 ## Project Aim
 
@@ -71,6 +77,9 @@ quantitative comparison and final study should be treated as 3D problems.
   - serial and MPI local execution through `MPI_TASKS`
   - Slurm submission scripts for one case, serial sweeps, and batched sweeps
 - Julia post-processing:
+  - `plot_alpha_profile_3d.jl` plots raw `rho/rho0-1` against `x-x_p` at the
+    requested log Lambda; it records actual snapshot/time and interpolation
+    weights in a companion `.dat` table
   - `force_from_run.jl` is the preferred one-case force script for both 2D and 3D runs
   - `force_from_run_3d.jl` remains as a simple older 3D cross-check
   - `sweep_force_plot.jl` aggregates sweep results for 2D and 3D cases
@@ -122,6 +131,15 @@ quantitative comparison and final study should be treated as 3D problems.
 
 Verified locally:
 
+- On 2026-10-21, all 51 alpha-profile assertions passed, covering log-Lambda
+  selection, off-center and exact-center interpolation, signed alpha,
+  partial reads, both byte orders, numerical tables, and invalid input.
+  The CLI/main rendering path produced PNG and `.dat` output from synthetic
+  data and a positive-time snapshot of a new 612-cell serial PLUTO smoke run.
+  At `t=0.000771561`, all 17 extracted densities exactly matched a separate
+  full-volume four-cell average. This verifies the extraction/output path,
+  not wake or force convergence. Details and artifact paths are in the
+  2026-10-21 work-history entry.
 - On 2026-10-01, case-generation regression tests covered legacy compatibility,
   arbitrary `CS0`, all derived scales, softening conflicts, warning/cell limits,
   case preservation, and matched no-sink sweeps. The default `CS0=1` generated
