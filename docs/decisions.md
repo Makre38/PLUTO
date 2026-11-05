@@ -123,3 +123,9 @@ The confirmed first-version interface is recorded in [toml_setup.md](toml_setup.
 ## Julia implementation policy clarification (2026-11-05)
 
 The TOML loader and its tests use Julia and standard-library TOML, replacing the initial Python implementation. Tests must describe their checks and save a readable result report. The user intends to add a repository-wide Julia preference and confirmation requirement for other languages to AGENTS.md later; no AGENTS.md changes are part of this step.
+
+## Direct generation and explicit sweeps
+
+- Generate cases directly in their requested directory; keep successful members and manifest entries on a later failure. No temporary case staging is used. Existing case protection remains.
+- For sweeps, every common field must be explicit, except the key supplied by sweep.values. Select one softening interface. List all missing keys and stop before generation. Single-case defaults and relative-output-path semantics are unchanged.
+- Git metadata is optional and must never block generation: record its absence distinctly from a clean working tree.

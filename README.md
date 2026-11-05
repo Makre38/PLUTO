@@ -73,8 +73,13 @@ Existing case directories are never overwritten by this interface. Sweep
 manifests list individual cases that can be independently run or submitted
 with the existing scripts. Inherited simulation environment variables do not
 override TOML; environment-variable preparation remains a separate interface.
-The default CFL is 0.333; Mach alerts are disabled by default. Set a positive
+Single cases default to CFL=0.333 and disabled Mach alerts. Sweeps require
+every common setting explicitly; see the complete sweep examples. Set a positive
 Mach threshold to enable them; the sound-speed default remains 1e-6.
+
+Case files are generated directly at the requested destination. Successful
+sweep members remain recorded if a later member fails. Git metadata is optional;
+a missing checkout or Git command does not prevent generation.
 
 ### Prepare one case
 

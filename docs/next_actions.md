@@ -100,9 +100,11 @@ future option.
 - Julia standard library only; use `bash scripts/prepare_from_toml.sh FILE`.
   3D single cases and one-parameter Mach/softening lists reuse the existing
   generator. Execution, MPI and Slurm remain separate.
-- Original/effective configuration and provenance are saved per case. Existing
-  destinations, unknown keys, conflicts and invalid values are rejected before
-  publication. Personal files belong in ignored `configs/local/`.
+- Original/effective configuration and optional Git provenance are saved per
+  case. Unknown keys, conflicts, invalid values and missing common sweep
+  settings are rejected before generation. Cases are generated directly;
+  successful members remain on later failure. Existing destinations are never
+  overwritten. Personal files belong in ignored `configs/local/`.
 - Local integration/regression checks and a 10-step serial run passed. Remote
   Julia availability, MPI/Slurm execution and production studies remain open.
 - Further options (2D, multiple sweep axes, per-key CLI overrides and execution

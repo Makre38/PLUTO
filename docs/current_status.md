@@ -21,7 +21,9 @@ setup from a configuration file (TOML is the preferred candidate).
 The file interface avoids script edits and repeated long commands, separates
 tracked examples from ignored trial setups, and retains original/effective
 settings per run. Schema version 1 supports single cases and one-parameter
-Mach/softening lists; inherited simulation environment variables are ignored.
+Mach/softening lists; sweeps require all common settings explicitly. Inherited
+simulation environment variables are ignored. Cases are generated directly,
+with successful sweep members retained on later failure. Git metadata is optional.
 The gravitational perturber and variable softening are to remain.
 The [feature plan](next_actions.md#requested-feature-changes-2026-10-20)
 records scope, unresolved design choices, and future verification.
@@ -137,6 +139,13 @@ quantitative comparison and final study should be treated as 3D problems.
 ## Verification Status
 
 Verified locally:
+
+- Latest generation corrections: all 34 described TOML scenarios passed.
+  Git absence/failure is tolerated; generation works without a temporary case
+  area; every common sweep field is checked for explicit presence; successful
+  members/manifests survive later failures. See the updated test report.
+  No PLUTO or numerical-analysis rerun was performed for these generation-only
+  changes; prior serial/numerical results below are historical.
 
 - Julia rewrite: 29 described TOML scenarios passed, together with 69 radial
   and 51 alpha-profile assertions. Readable reports and commands are in

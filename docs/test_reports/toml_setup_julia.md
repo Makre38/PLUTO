@@ -1,16 +1,21 @@
 # TOML setup: Julia test report
 
-- Executed: 2026-11-05T15:29:05.372
+- Executed: 2026-11-05T17:41:03.109
 - Julia: 1.12.6
-- Revision at execution: ef57aa7f5272d637bfa950dfe59d70e38f1a2128
+- Revision at execution: c21ec7fe48cc4ba76395027ea43df590608f4da2
 - Uncommitted changes at execution: true
 - Command: `julia --startup-file=no tests/test_toml_setup.jl` (optional `--report PATH.md`)
-- Result: 29 / 29 scenarios passed.
+- Result: 34 / 34 scenarios passed.
 
 Each scenario below runs generation or validation checks. No simulation, compiler, MPI or physical-convergence test is run by this suite. Temporary fixtures are deleted after each scenario.
 
 | Result | What was checked |
 | --- | --- |
+| PASS | Git情報がなくても直接生成でき、未取得と記録する：no_checkout |
+| PASS | Git情報がなくても直接生成でき、未取得と記録する：no_git |
+| PASS | Git情報がなくても直接生成でき、未取得と記録する：git_failure |
+| PASS | sweepの共通設定を一項目ずつ省略し、全項目が生成前に拒否されることを確認する |
+| PASS | sweepの不足項目をまとめて表示し、softeningの片方指定を必須にする |
 | PASS | 実際のシェル入口から、作業ディレクトリに依存せず単一ケースを生成する |
 | PASS | 既定値・空白を含む相対パス・元TOMLの完全保存・実効設定・コード版を確認する |
 | PASS | Mach のリスト掃引・manifest・CFL・診断設定を確認する（softening掃引では他の入力が同一） |
@@ -36,7 +41,7 @@ Each scenario below runs generation or validation checks. No simulation, compile
 | PASS | 出力サブディレクトリを検証し拒否する：/tmp/escape |
 | PASS | 出力サブディレクトリを検証し拒否する：. |
 | PASS | 出力サブディレクトリを検証し拒否する：with spaces |
-| PASS | 後続sweepケースが生成失敗した場合、先行ケースも公開しない |
+| PASS | 後続sweepの生成失敗でも、指定先の成功済みケースとmanifestを保持する |
 | PASS | 既存ケースを上書きせず、元の設定ファイルを保存する |
-| PASS | 丸めたケース名が衝突するsweepを、公開前に拒否する |
+| PASS | 丸めたケース名の衝突時、先行ケースを上書きせずmanifestに保持する |
 | PASS | 共有TOML例3ファイルがすべて読み込み・設定解決できる |

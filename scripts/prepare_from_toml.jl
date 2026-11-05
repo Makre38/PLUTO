@@ -83,6 +83,16 @@ function resolve(raw, base)
         end
         # Numeric equality must also reject integer/float duplicates (1, 1.0).
         any(values[i] == values[j] for i in eachindex(values) for j in 1:i-1) && error("Duplicate sweep values")
+        missing = String[]
+        for (section, fields) in FIELDS, field in keys(fields)
+            section == "softening" && continue
+            "$section.$field" == parameter && continue
+            haskey(get(raw, section, Dict()), field) || push!(missing, "$section.$field")
+        end
+        if parameter != "softening.a_soft" && isempty(resolved["softening"])
+            push!(missing, "softening.a_soft or softening.rsoft_frac")
+        end
+        isempty(missing) || error("Missing explicit sweep settings (no cases generated):\n  " * join(sort(missing), "\n  "))
     end
     cases = Dict{String,Any}[]
     for value in values
@@ -101,79 +111,77 @@ function resolve(raw, base)
     return cases
 end
 
-function write_effective(path, case, summary, source, revision, dirty)
+function code_provenance(repo=REPO)
+    try
+        revision = strip(read(pipeline(Cmd(`git rev-parse HEAD`; dir=repo), stderr=devnull), String))
+        dirty = !isempty(read(pipeline(Cmd(`git status --porcelain`; dir=repo), stderr=devnull), String))
+        return Dict{String,Any}("metadata_available"=>true, "revision"=>revision, "dirty"=>dirty)
+    catch err
+        err isa InterruptException && rethrow()
+        return Dict{String,Any}("metadata_available"=>false, "revision"=>"unavailable",
+                                "dirty"=>"unknown", "reason"=>sprint(showerror, err))
+    end
+end
+
+function write_effective(path, case, summary, source, provenance)
     record = deepcopy(case)
-    record["provenance"] = Dict("source" => source, "revision" => revision, "dirty" => dirty)
+    record["provenance"] = merge(provenance, Dict("source" => source))
     record["derived"] = summary # Preserve generator precision in its original strings.
     open(path, "w") do io
         TOML.print(io, record; sorted=true)
     end
 end
 
-function prepare(source)
+function prepare(source; repo=REPO)
     source = realpath(source)
     original = read(source, String)
     raw = TOML.parse(original)
     cases = resolve(raw, dirname(source))
-    revision = strip(read(Cmd(`git rev-parse HEAD`; dir=REPO), String))
-    dirty = !isempty(read(Cmd(`git status --porcelain`; dir=REPO), String))
+    provenance = code_provenance(repo)
+    provenance["metadata_available"] || println(stderr, "Warning: Git metadata unavailable; continuing case generation.")
     excluded = Set(field[1] for fields in values(FIELDS) for field in values(fields))
     env_base = Dict(k => v for (k,v) in ENV if !(k in excluded) && !startswith(k, "SINK_"))
-    return mktempdir(; prefix="pluto-toml-") do tmp
-        staged = Tuple{String,String}[]
-        destinations = Set{String}()
-        for (index, case) in enumerate(cases)
-            env = copy(env_base)
-            for (table, fields) in FIELDS, (key, (variable, _, _)) in fields
-                haskey(case[table], key) && (env[variable] = string(case[table][key]))
-            end
-            env["RUNS_DIR"] = joinpath(tmp, string(index))
-            out, err = IOBuffer(), IOBuffer()
-            proc = run(pipeline(ignorestatus(setenv(`bash $(joinpath(REPO,"scripts/prepare_one_case_3d.sh"))`, env)), stdout=out, stderr=err))
-            print(stderr, String(take!(err)))
-            success(proc) || error("Case generation failed; no cases published")
-            lines = split(String(take!(out)), '\n')
-            line = findfirst(l -> startswith(l, "Prepared "), lines)
-            line === nothing && error("Missing generated case path")
-            stage = String(chopprefix(lines[line], "Prepared "))
-            destination = joinpath(case["output"]["runs_dir"], basename(stage))
-            (destination in destinations || ispath(destination) || islink(destination)) &&
-                error("Refusing to overwrite or duplicate case: $destination")
-            push!(destinations, destination)
-            summary = Dict{String,String}()
-            for line in eachline(joinpath(stage, "run_summary.txt"))
-                key, value = split(line, " = "; limit=2)
-                summary[key] = value
-            end
-            write(joinpath(stage, "setup.original.toml"), original)
-            write_effective(joinpath(stage, "setup.effective.toml"), case, summary, source, revision, dirty)
-            push!(staged, (stage, destination))
-        end
-        runs_dir = cases[1]["output"]["runs_dir"]
-        mkpath(runs_dir)
-        manifest = nothing
-        if haskey(raw, "sweep")
-            manifest_dir = mkpath(joinpath(runs_dir, "manifests"))
-            manifest, io = mktemp(manifest_dir; cleanup=false)
-            close(io)
-        end
-        published = String[]
-        for (stage, destination) in staged
-            mkdir(destination) # Exclusive reservation against concurrent generation.
-            for name in readdir(stage)
-                cp(joinpath(stage, name), joinpath(destination, name))
-            end
-            push!(published, destination)
-            if manifest !== nothing
-                open(manifest, "a") do io
-                    println(io, destination)
-                end
-            end
-            println("Prepared $destination")
-        end
-        manifest === nothing || println("Wrote manifest $manifest")
-        published
+    runs_dir = cases[1]["output"]["runs_dir"]
+    manifest = nothing
+    if haskey(raw, "sweep")
+        manifest_dir = mkpath(joinpath(runs_dir, "manifests"))
+        manifest, io = mktemp(manifest_dir; cleanup=false)
+        close(io)
+        println("Manifest: $manifest (records each successfully generated case)")
     end
+    published = String[]
+    for case in cases
+        env = copy(env_base)
+        for (table, fields) in FIELDS, (key, (variable, _, _)) in fields
+            haskey(case[table], key) && (env[variable] = string(case[table][key]))
+        end
+        env["CASE_MUST_BE_NEW"] = "1"
+        out, err = IOBuffer(), IOBuffer()
+        proc = run(pipeline(ignorestatus(setenv(`bash $(joinpath(repo,"scripts/prepare_one_case_3d.sh"))`, env)), stdout=out, stderr=err))
+        print(stderr, String(take!(err)))
+        success(proc) || error("Case generation failed; $(length(published)) successful cases retained" *
+                              (manifest === nothing ? "" : "; manifest: $manifest"))
+        lines = split(String(take!(out)), '\n')
+        line = findfirst(l -> startswith(l, "Prepared "), lines)
+        line === nothing && error("Missing generated case path")
+        destination = String(chopprefix(lines[line], "Prepared "))
+        summary = Dict{String,String}()
+        for line in eachline(joinpath(destination, "run_summary.txt"))
+            key, value = split(line, " = "; limit=2)
+            summary[key] = value
+        end
+        write(joinpath(destination, "setup.original.toml"), original)
+        write_effective(joinpath(destination, "setup.effective.toml"), case, summary, source, provenance)
+        push!(published, destination)
+        if manifest !== nothing
+            open(manifest, "a") do io
+                println(io, destination)
+            end
+        end
+        println("Prepared $destination")
+    end
+    manifest === nothing || println("Wrote manifest $manifest")
+    return published
 end
 
 function main(args=ARGS)

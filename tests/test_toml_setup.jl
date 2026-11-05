@@ -19,7 +19,25 @@ end
 
 base(extra="") = "schema_version = 1\n[output]\nruns_dir = \"runs with spaces\"\n" * extra
 
-function run_config(root, body; ok=true, extra=Dict{String,String}())
+# Complete fixture with every common setting explicit, like a user's sweep file.
+function full_sweep(body)
+    raw = TOML.parse(body)
+    table, key = split(raw["sweep"]["parameter"], '.')
+    for (section, fields) in TS.FIELDS
+        section == "softening" && continue
+        settings = get!(raw, section, Dict{String,Any}())
+        for (field, (_, default, _)) in fields
+            section == table && field == key && continue
+            get!(settings, field, default)
+        end
+    end
+    if table != "softening"
+        get!(raw, "softening", Dict("a_soft"=>1.0))
+    end
+    io = IOBuffer(); TOML.print(io, raw); return String(take!(io))
+end
+
+function run_config(root, body; ok=true, extra=Dict{String,String}(), repo=TS.REPO)
     source = joinpath(root, "input.toml")
     write(source, body)
     output, errorlog = joinpath(root, "stdout.txt"), joinpath(root, "stderr.txt")
@@ -30,7 +48,7 @@ function run_config(root, body; ok=true, extra=Dict{String,String}())
                 redirect_stderr(err) do
                     withenv(collect(pairs(extra))...) do
                         try
-                            TS.prepare(source)
+                            TS.prepare(source; repo)
                         catch exception
                             exception isa InterruptException && rethrow()
                             passed = false
@@ -52,6 +70,69 @@ function normalized_ini(path)
 end
 
 function tests()
+    for mode in (:no_checkout, :no_git, :git_failure)
+        verify("Git情報がなくても直接生成でき、未取得と記録する：$mode") do
+            mktempdir() do root
+                repo = TS.REPO
+                extra = Dict{String,String}()
+                if mode == :no_checkout
+                    repo = mkpath(joinpath(root,"copied-repo"))
+                    mkpath(joinpath(repo,"scripts"))
+                    for file in ("definitions_3d.h","init_3d.c","makefile","local_make","scripts/prepare_one_case_3d.sh")
+                        cp(joinpath(TS.REPO,file),joinpath(repo,file))
+                    end
+                else
+                    bin = mkpath(joinpath(root,"bin"))
+                    for tool in ("bash","awk","mkdir","cp","dirname","cat")
+                        symlink(Sys.which(tool),joinpath(bin,tool))
+                    end
+                    if mode == :git_failure
+                        write(joinpath(bin,"git"),"#!/bin/sh\nexit 128\n")
+                        chmod(joinpath(bin,"git"),0o755)
+                    end
+                    extra["PATH"] = bin
+                end
+                # If staging is accidentally reintroduced, this invalid TMPDIR fails.
+                extra["TMPDIR"] = joinpath(root,"no-temporary-area")
+                result = run_config(root,base("[time]\nlog_lambda_max = 0.1\n"); extra,repo)
+                case = only(result.cases)
+                @assert dirname(case) == joinpath(root,"runs with spaces")
+                provenance = TOML.parsefile(joinpath(case,"setup.effective.toml"))["provenance"]
+                @assert provenance["metadata_available"] == false
+                @assert provenance["revision"] == "unavailable"
+                @assert provenance["dirty"] == "unknown"
+                @assert occursin("Git metadata unavailable",result.stderr)
+            end
+        end
+    end
+    verify("sweepの共通設定を一項目ずつ省略し、全項目が生成前に拒否されることを確認する") do
+        mktempdir() do root
+            complete = TOML.parse(full_sweep(base("[sweep]\nparameter = \"physics.mach\"\nvalues = [0.1, 0.5]")))
+            for (section, fields) in TS.FIELDS, field in keys(fields)
+                section == "softening" && continue
+                section == "physics" && field == "mach" && continue
+                raw = deepcopy(complete)
+                delete!(raw[section],field)
+                io=IOBuffer(); TOML.print(io,raw)
+                result=run_config(root,String(take!(io));ok=false)
+                @assert occursin("$section.$field",result.stderr)
+                @assert !ispath(joinpath(root,"runs with spaces"))
+            end
+        end
+    end
+    verify("sweepの不足項目をまとめて表示し、softeningの片方指定を必須にする") do
+        mktempdir() do root
+            result=run_config(root,base("[sweep]\nparameter = \"physics.mach\"\nvalues = [0.1]");ok=false)
+            for name in ("physics.gamma","output.count","grid.cells_per_rbhl","diagnostics.mach_threshold","softening.a_soft or softening.rsoft_frac")
+                @assert occursin(name,result.stderr)
+            end
+            @assert !ispath(joinpath(root,"runs with spaces"))
+            raw=TOML.parse(full_sweep(base("[sweep]\nparameter = \"physics.mach\"\nvalues = [0.1]")))
+            raw["softening"]=Dict("rsoft_frac"=>0.25)
+            io=IOBuffer();TOML.print(io,raw)
+            @assert length(run_config(root,String(take!(io))).cases)==1
+        end
+    end
     verify("実際のシェル入口から、作業ディレクトリに依存せず単一ケースを生成する") do
         mktempdir() do root
             source = joinpath(root, "input.toml")
@@ -106,7 +187,7 @@ function tests()
                 parameter = "$parameter"
                 values = $values
                 """)
-                result = run_config(root, body)
+                result = run_config(root, full_sweep(body))
                 @assert length(result.cases) == 2
                 manifest = only([chopprefix(l,"Wrote manifest ") for l in split(result.stdout,'\n') if startswith(l,"Wrote manifest ")])
                 @assert readlines(manifest) == result.cases
@@ -158,10 +239,15 @@ function tests()
             end
         end
     end
-    verify("後続sweepケースが生成失敗した場合、先行ケースも公開しない") do
+    verify("後続sweepの生成失敗でも、指定先の成功済みケースとmanifestを保持する") do
         mktempdir() do root
-            run_config(root, base("[time]\nlog_lambda_max = 0.1\n[sweep]\nparameter = \"physics.mach\"\nvalues = [0.1, 1000000.0]"); ok=false)
-            @assert !ispath(joinpath(root,"runs with spaces"))
+            body = full_sweep(base("[time]\nlog_lambda_max = 0.1\n[sweep]\nparameter = \"physics.mach\"\nvalues = [0.1, 1000000.0]"))
+            result = run_config(root, body; ok=false)
+            @assert length(result.cases) == 1
+            @assert isfile(joinpath(only(result.cases),"setup.effective.toml"))
+            manifest = only(readdir(joinpath(root,"runs with spaces/manifests"); join=true))
+            @assert readlines(manifest) == result.cases
+            @assert occursin("1 successful cases retained", result.stderr)
         end
     end
     verify("既存ケースを上書きせず、元の設定ファイルを保存する") do
@@ -174,10 +260,12 @@ function tests()
             @assert read(joinpath(case,"setup.original.toml")) == saved
         end
     end
-    verify("丸めたケース名が衝突するsweepを、公開前に拒否する") do
+    verify("丸めたケース名の衝突時、先行ケースを上書きせずmanifestに保持する") do
         mktempdir() do root
-            run_config(root,base("[time]\nlog_lambda_max = 0.1\n[sweep]\nparameter = \"physics.mach\"\nvalues = [0.10001, 0.10002]"); ok=false)
-            @assert !ispath(joinpath(root,"runs with spaces"))
+            result = run_config(root,full_sweep(base("[time]\nlog_lambda_max = 0.1\n[sweep]\nparameter = \"physics.mach\"\nvalues = [0.10001, 0.10002]")); ok=false)
+            @assert length(result.cases) == 1
+            manifest = only(readdir(joinpath(root,"runs with spaces/manifests"); join=true))
+            @assert readlines(manifest) == result.cases
         end
     end
     verify("共有TOML例3ファイルがすべて読み込み・設定解決できる") do
@@ -202,15 +290,16 @@ function main(args)
     open(report,"w") do io
         println(io,"# TOML setup: Julia test report\n")
         println(io,"- Executed: $started\n- Julia: $VERSION")
-        println(io,"- Revision at execution: ",strip(read(Cmd(`git rev-parse HEAD`;dir=TS.REPO),String)))
-        println(io,"- Uncommitted changes at execution: ",!isempty(read(Cmd(`git status --porcelain`;dir=TS.REPO),String)))
+        provenance = TS.code_provenance()
+        println(io,"- Revision at execution: ",provenance["revision"])
+        println(io,"- Uncommitted changes at execution: ",provenance["dirty"])
         println(io,"- Command: `julia --startup-file=no tests/test_toml_setup.jl` (optional `--report PATH.md`)")
         println(io,"- Result: $passed / $(length(RESULTS)) scenarios passed.\n")
         println(io,"Each scenario below runs generation or validation checks. No simulation, compiler, MPI or physical-convergence test is run by this suite. Temporary fixtures are deleted after each scenario.\n")
         println(io,"| Result | What was checked |\n| --- | --- |")
         for result in RESULTS
             println(io,"| ",result.passed ? "PASS" : "FAIL"," | ",result.description," |")
-            isempty(result.detail) || println(io,"\nFailure: ",replace(result.detail,'\n'=>" "),"\n")
+            isempty(result.detail) || println(io,"\nFailure: ",strip(replace(result.detail,'\n'=>" ")),"\n")
         end
     end
     println("$passed / $(length(RESULTS)) scenarios passed; report: $report")

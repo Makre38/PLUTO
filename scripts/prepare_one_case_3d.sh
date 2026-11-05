@@ -185,10 +185,10 @@ fi
 
 mkdir -p "${runs_dir}"
 case_dir="${runs_dir}/${case_name}"
-if [[ "${softening_mode}" == asoft ]]; then
-  # New benchmark cases must not overwrite an earlier run with different settings.
+if [[ "${softening_mode}" == asoft || "${CASE_MUST_BE_NEW:-0}" == 1 ]]; then
+  # TOML and A_SOFT cases must not overwrite an earlier run.
   mkdir "${case_dir}" || {
-    echo "Refusing to overwrite A_SOFT case: ${case_dir}. Choose a fresh RUNS_DIR." >&2
+    echo "Refusing to overwrite case: ${case_dir}. Choose a fresh RUNS_DIR." >&2
     exit 1
   }
 else
