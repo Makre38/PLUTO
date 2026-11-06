@@ -470,3 +470,11 @@ The immediate goal was infrastructure cleanup before further physics debugging.
 - Not rerun: Python tests, PLUTO compilation/evolution, Julia force/profile suites, or remote/MPI execution. Simulation and analysis code are untouched; this step tests generation/validation behavior. Previous runtime and numerical reports remain historical evidence rather than checks rerun here.
 - Limitations: direct generation can leave a partially written failing case directory; only completed cases enter the manifest. Existing destinations are protected, so inspect partial output before retrying. The remote user's exact original Git error has not been supplied, but absence and nonzero-exit cases are now handled.
 - Next: review the corrective commit on dev/toml-setup, then retry generation on the remote machine. No main merge, push, AGENTS.md policy edits or changes to job submission were performed.
+
+## 2026-11-06 - Dated ChatGPT Handoff Report
+
+- Purpose: prepare a standalone Japanese Markdown report for ChatGPT covering work since the prior report around 2026-10-19.
+- Historical evidence: the 2026-10-20 log refers to an uncommitted docs/report.md and a 2026-10-19 log entry, but the original report body is absent from the current tree and Git history. Its exact contents and actual transfer to ChatGPT cannot be confirmed.
+- Changes: added docs/report-2026-11-06.md with research context, alpha profiles, sink removal, CFL/softening clarification, final Julia TOML semantics, local verification versus user-reported remote generation, workflow policies and remaining velocity-gradient/numerical questions. Baseline was main/origin/main at f6784dd with these implementations integrated. Use dated, committed reports for future handoffs rather than overwriting prior reports.
+- Verification: checked report statements against repository history, current TOML specifications, saved test reports and the user's remote-success report. Checked relative links, referenced commits and whitespace. Documentation only: no tests, simulations or remote commands were rerun; report distinguishes historical and user-reported evidence.
+- Next: share the dated report with ChatGPT, then resume velocity-profile design and the outstanding numerical validation. No implementation changes, merge or push in this documentation step.
