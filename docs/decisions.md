@@ -122,7 +122,7 @@ The confirmed first-version interface is recorded in [toml_setup.md](toml_setup.
 
 ## Julia implementation policy clarification (2026-11-05)
 
-The TOML loader and its tests use Julia and standard-library TOML, replacing the initial Python implementation. Tests must describe their checks and save a readable result report. The user intends to add a repository-wide Julia preference and confirmation requirement for other languages to AGENTS.md later; no AGENTS.md changes are part of this step.
+The TOML loader and its tests use Julia and standard-library TOML, replacing the initial Python implementation. Tests must describe their checks and save a readable result report. At that implementation step, repository-wide instructions were deferred. They have since been written in the local, Git-ignored AGENTS.md. The concrete briefing checklist and operational rationale are now recorded in [workflow_notes.md](workflow_notes.md).
 
 ## Direct generation and explicit sweeps
 

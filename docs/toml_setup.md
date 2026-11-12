@@ -100,4 +100,6 @@ The suite checks generation and validation, not PLUTO physics. Serial smoke
 verification is recorded separately in the session handoff and the runtime
 report. The existing numerical Julia suites retain their normal Test summaries;
 [the numerical verification record](test_reports/toml_julia_runtime.md) explains
-what was run. AGENTS.md policy changes are deferred to a later task.
+what was run. Repository AGENTS.md policies have since been written locally
+(and remain Git-ignored). See [workflow notes](workflow_notes.md) for the
+briefing checklist, diagnostic rationale and generation-only sbatch example.

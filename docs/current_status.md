@@ -1,6 +1,6 @@
 # Current Status
 
-Last updated: 2026-11-05 (TOML setup implementation)
+Last updated: 2026-11-12 (documentation reconciliation; no new runtime verification)
 
 Latest test update (2026-11-05): the user confirms no-sink calculations do
 not break down, and results are nearly unchanged when varying CFL within
@@ -10,6 +10,14 @@ were not supplied here. Softening sensitivity remains unverified. See the
 Implementation order: remove the sink, add TOML setup, then velocity gradients.
 Earlier CFL continuation-only notes below are historical and are superseded
 by this report; systematic MPI and physical-convergence checks remain open.
+
+Documentation follow-up (2026-11-12): [workflow_notes.md](workflow_notes.md)
+records the previously undetailed sbatch generation example, Mach-alert
+rationale and implementation briefing checklist. Local AGENTS.md is already
+written and remains ignored. The [dated ChatGPT report](report-2026-11-06.md)
+includes the user-reported remote generation success; no new remote verification
+was performed in this follow-up. Implementation branch names below refer to
+their original work stages; those changes are now integrated into local main.
 
 ## Requested Work And Implementation Status
 
