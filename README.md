@@ -43,6 +43,8 @@ Julia scripts:
   - Compute `Fx` from one 3D run output using the full 3D density field.
 - `force_radial_profile_3d.jl`
   - Compute cumulative and shell gravitational forces with both point-mass and softened kernels, without changing the existing one-case analysis.
+- `collect_df_resolution_3d.jl`
+  - Write a normalized DF table versus actual `R_BHL/dx`, with one column per `A_SOFT`, from cases directly under one directory. No plotting packages are needed.
 - `sweep_force_plot.jl`
   - Aggregate force results across a sweep.
 - `animate_density.jl`
@@ -191,6 +193,36 @@ Warnings use `MIN_CELLS_PER_RSOFT=2` cells per radius and
 These configurable thresholds are numerical heuristics, not physical criteria
 or convergence guarantees. They never enlarge the box or grid automatically;
 `WARN_CELLS` and `HARD_CELLS` still apply.
+
+### DF resolution table at fixed Mach
+
+Point each resolution's TOML at the same `output.runs_dir`. Relative TOML paths
+are resolved from the TOML directory: use `runs_dir = "../../runs_3d"` under
+`[output]` for TOMLs in `configs/local/`. Generate and run the cases separately,
+then collect at a common requested `log Lambda`:
+
+```bash
+julia collect_df_resolution_3d.jl ./runs_3d 2.0
+julia collect_df_resolution_3d.jl ./runs_3d 2.0 --output df_resolution.dat
+julia collect_df_resolution_3d.jl ./runs_3d 2.0 --output df_resolution.dat -f
+```
+
+The default is `runs_3d/df_resolution_loglambda_2.0.dat`. Existing files are
+protected before snapshot reads; `--force` or `-f` permits overwriting the table.
+The first column is actual `R_BHL/dx` (`cells_per_rbhl_x`), followed by normalized
+DF columns sorted by `A_SOFT`. The point-force kernel, `r_cut=R_BHL`, sign and
+normalization match the existing 3D sweep analysis. All cases must have the same
+Mach, but its value is not fixed. Cases that have not reached the target are
+omitted from the corresponding series (`NaN` entries); all-missing rows are
+removed. PNGs are not generated. See [the full specification](docs/df_resolution_table.md)
+for time selection, input checks, provenance and I/O failure behavior.
+
+```bash
+julia --startup-file=no scripts/verify_df_resolution.jl
+```
+
+This runs synthetic integration/CLI checks and the existing Julia radial/alpha
+numerical suites, saving a readable report to `docs/test_reports/df_resolution.md`.
 
 ### Radial force diagnostic
 

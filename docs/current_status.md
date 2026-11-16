@@ -1,8 +1,15 @@
 # Current Status
 
-Last updated: 2026-11-12 (documentation reconciliation; no new runtime verification)
+Last updated: 2026-11-16 (DF resolution table)
 
-Latest test update (2026-11-05): the user confirms no-sink calculations do
+The new `collect_df_resolution_3d.jl` writes normalized DF versus actual
+`R_BHL/dx`, with an A_soft column per discovered value. It reads immediate
+case directories at a common Mach, excludes unreached cases, and writes `.dat`
+only using the existing point-force/cutoff convention. See the
+[specification](df_resolution_table.md) and [verification report](test_reports/df_resolution.md).
+This adds analysis tooling, not new evidence of physical convergence.
+
+Latest user-reported simulation update (2026-11-05): the user confirms no-sink calculations do
 not break down, and results are nearly unchanged when varying CFL within
 `CFL < 1/dim` in the tested conditions. Detailed run records and tolerances
 were not supplied here. Softening sensitivity remains unverified. See the
@@ -147,6 +154,13 @@ quantitative comparison and final study should be treated as 3D problems.
 ## Verification Status
 
 Verified locally:
+
+- On 2026-11-16, the DF resolution collector passed all 18 verification
+  scenarios, including analytic-force/legacy-CLI agreement, actual-resolution
+  tables, time selection, missing data, input validation and overwrite guards.
+  The existing radial-force (69 assertions) and alpha-profile (51 assertions)
+  suites also passed in that run. See [the report](test_reports/df_resolution.md).
+  Synthetic data only: no PLUTO evolution, production data or remote execution.
 
 - Latest generation corrections: all 34 described TOML scenarios passed.
   Git absence/failure is tolerated; generation works without a temporary case

@@ -129,3 +129,17 @@ The TOML loader and its tests use Julia and standard-library TOML, replacing the
 - Generate cases directly in their requested directory; keep successful members and manifest entries on a later failure. No temporary case staging is used. Existing case protection remains.
 - For sweeps, every common field must be explicit, except the key supplied by sweep.values. Select one softening interface. List all missing keys and stop before generation. Single-case defaults and relative-output-path semantics are unchanged.
 - Git metadata is optional and must never block generation: record its absence distinctly from a clean working tree.
+
+## DF resolution table (2026-11-16)
+
+- Keep per-resolution TOMLs with an A_soft sweep and a shared output parent;
+  do not extend the TOML sweep axes for this analysis task.
+- Collect immediate case directories at one common (not hard-coded) Mach and
+  one requested log Lambda. Preserve the existing 3D point-force integral,
+  R_BHL cutoff including its boundary, +x drag sign and normalization.
+- Use actual R_BHL/dx in the first table column, one normalized DF column per
+  discovered A_soft, and NaN for unavailable combinations. Omit all-missing
+  rows and reject ambiguous duplicate cases or inconsistent x resolution.
+- Write `.dat` only; no plotting backend or new external runtime dependency.
+  Existing tables require explicit `--force`/`-f` to replace. Details and
+  limits are in [df_resolution_table.md](df_resolution_table.md).

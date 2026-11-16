@@ -1,6 +1,12 @@
 # Next Actions
 
-Last updated: 2026-11-05 (TOML setup implemented)
+Last updated: 2026-11-16 (DF resolution table)
+
+Resolution/softening comparisons can now be collected with
+`julia collect_df_resolution_3d.jl RUNS_DIR LOG_LAMBDA`. Send each resolution's
+TOML cases to the same parent, then collect existing normalized DF at actual
+`R_BHL/dx`, one column per A_soft. See [the table specification](df_resolution_table.md).
+Production comparisons and physical-convergence checks remain pending.
 
 Implementation priority (2026-11-05): sink removal, then TOML-based setup,
 then transverse velocity gradients. The user confirms stable no-sink runs
